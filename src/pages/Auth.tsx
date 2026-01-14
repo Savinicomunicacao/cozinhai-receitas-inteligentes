@@ -1,37 +1,79 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ChefHat, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
+import { ChefHat, Mail, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 type AuthMode = "login" | "signup";
 
 export default function Auth() {
-  const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Demo: Navigate to onboarding
-    navigate("/onboarding");
+    
+    if (!formData.email || !formData.password) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      if (mode === "signup") {
+        const { error } = await signUp(formData.email, formData.password);
+        if (error) {
+          if (error.message.includes("already registered")) {
+            toast.error("Este e-mail já está cadastrado. Tente fazer login.");
+          } else {
+            toast.error(error.message || "Erro ao criar conta");
+          }
+          return;
+        }
+        toast.success("Conta criada com sucesso!");
+      } else {
+        const { error } = await signIn(formData.email, formData.password);
+        if (error) {
+          if (error.message.includes("Invalid login")) {
+            toast.error("E-mail ou senha incorretos");
+          } else {
+            toast.error(error.message || "Erro ao fazer login");
+          }
+          return;
+        }
+        toast.success("Login realizado!");
+      }
+    } catch (error) {
+      console.error("Auth error:", error);
+      toast.error("Erro inesperado. Tente novamente.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = () => {
-    // Demo: Navigate to onboarding
-    navigate("/onboarding");
+    toast.info("Login com Google em desenvolvimento");
   };
 
   const handleGuestContinue = () => {
-    navigate("/onboarding");
+    toast.info("Modo convidado em desenvolvimento");
   };
 
   return (
@@ -54,6 +96,7 @@ export default function Auth() {
           <div className="flex bg-muted rounded-xl p-1 mb-6">
             <button
               onClick={() => setMode("login")}
+              disabled={isLoading}
               className={cn(
                 "flex-1 py-2.5 rounded-lg font-medium text-sm transition-all",
                 mode === "login"
@@ -65,6 +108,7 @@ export default function Auth() {
             </button>
             <button
               onClick={() => setMode("signup")}
+              disabled={isLoading}
               className={cn(
                 "flex-1 py-2.5 rounded-lg font-medium text-sm transition-all",
                 mode === "signup"
@@ -89,6 +133,7 @@ export default function Auth() {
                     className="pl-10 h-12"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -105,6 +150,8 @@ export default function Auth() {
                   className="pl-10 h-12"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  disabled={isLoading}
+                  required
                 />
               </div>
             </div>
@@ -120,6 +167,9 @@ export default function Auth() {
                   className="pl-10 pr-10 h-12"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  disabled={isLoading}
+                  required
+                  minLength={6}
                 />
                 <button
                   type="button"
@@ -131,8 +181,15 @@ export default function Auth() {
               </div>
             </div>
 
-            <Button type="submit" variant="hero" size="lg" className="w-full">
-              {mode === "login" ? "Entrar" : "Criar conta"}
+            <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {mode === "login" ? "Entrando..." : "Criando conta..."}
+                </>
+              ) : (
+                mode === "login" ? "Entrar" : "Criar conta"
+              )}
             </Button>
           </form>
 
@@ -149,6 +206,7 @@ export default function Auth() {
             size="lg"
             className="w-full"
             onClick={handleGoogleLogin}
+            disabled={isLoading}
           >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path
@@ -174,6 +232,7 @@ export default function Auth() {
           {/* Guest Option */}
           <button
             onClick={handleGuestContinue}
+            disabled={isLoading}
             className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-4 mt-4"
           >
             Continuar como convidada
