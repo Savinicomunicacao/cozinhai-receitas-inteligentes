@@ -15,6 +15,7 @@ import Saved from "./pages/Saved";
 import Profile from "./pages/Profile";
 import Recipe from "./pages/Recipe";
 import Cook from "./pages/Cook";
+import History from "./pages/History";
 import Paywall from "./pages/Paywall";
 import NotFound from "./pages/NotFound";
 
@@ -111,9 +112,10 @@ function AppRoutes() {
         <Route path="profile" element={<Profile />} />
       </Route>
       
-      {/* Full-screen recipe routes */}
+      {/* Full-screen routes */}
       <Route path="/app/recipe/:id" element={<ProtectedRoute><Recipe /></ProtectedRoute>} />
       <Route path="/app/cook/:id" element={<ProtectedRoute><Cook /></ProtectedRoute>} />
+      <Route path="/app/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
       
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />

@@ -113,7 +113,7 @@ export default function Chat() {
         <ChatInput
           onSendMessage={handleSendMessage}
           onSendAudio={(transcript) => handleSendMessage(transcript)}
-          onSendImage={() => setShowPaywall(true)}
+          onSendImage={(imageData) => handleSendMessage(`[IMAGEM:${imageData}]`)}
           disabled={isLoading}
           isPro={isPro}
         />
