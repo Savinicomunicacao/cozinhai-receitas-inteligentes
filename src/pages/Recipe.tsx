@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
   ChevronLeft, 
@@ -7,46 +7,36 @@ import {
   Bookmark,
   BookmarkCheck,
   Play,
-  ShoppingCart,
-  Check
+  Check,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
-// Import recipe image
-import frangoCremoso from "@/assets/recipe-frango-cremoso.jpg";
+interface Ingredient {
+  name: string;
+  qty: string;
+  unit: string;
+  fromUser?: boolean;
+}
 
-// Sample recipe data
-const sampleRecipe = {
-  id: "1",
-  title: "Frango Cremoso Rápido",
-  imageUrl: frangoCremoso,
-  description: "Uma receita deliciosa e prática para o dia a dia. Perfeita para quando você quer algo saboroso sem muito trabalho.",
-  prepTime: 25,
-  servings: 4,
-  difficulty: "facil" as const,
-  tags: ["Rápida", "Proteína", "Sem glúten"],
-  ingredients: [
-    { name: "Peito de frango", qty: "500", unit: "g", have: true },
-    { name: "Creme de leite", qty: "200", unit: "ml", have: true },
-    { name: "Cebola", qty: "1", unit: "un", have: true },
-    { name: "Alho", qty: "3", unit: "dentes", have: true },
-    { name: "Tomate pelado", qty: "200", unit: "g", have: false },
-    { name: "Manjericão fresco", qty: "a gosto", have: false },
-    { name: "Sal e pimenta", qty: "a gosto", have: true },
-  ],
-  steps: [
-    "Corte o frango em cubos médios e tempere com sal e pimenta.",
-    "Em uma frigideira grande, aqueça um fio de azeite e doure o frango. Reserve.",
-    "Na mesma frigideira, refogue a cebola e o alho picados até dourar.",
-    "Adicione o tomate pelado e deixe cozinhar por 5 minutos.",
-    "Junte o frango, o creme de leite e misture bem.",
-    "Deixe cozinhar em fogo baixo por mais 5 minutos.",
-    "Finalize com manjericão fresco e sirva com arroz.",
-  ],
-};
+interface Recipe {
+  id: string;
+  title: string;
+  description: string | null;
+  prep_time_minutes: number;
+  servings: number;
+  difficulty: string;
+  tags: string[];
+  ingredients: Ingredient[];
+  steps: string[];
+  image_url: string | null;
+}
 
-const difficultyLabels = {
+const difficultyLabels: Record<string, string> = {
   facil: "Fácil",
   medio: "Médio",
   dificil: "Difícil",
@@ -55,29 +45,132 @@ const difficultyLabels = {
 export default function Recipe() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps">("ingredients");
 
-  const missingItems = sampleRecipe.ingredients.filter(i => !i.have);
+  useEffect(() => {
+    if (id) {
+      loadRecipe();
+      checkIfSaved();
+    }
+  }, [id]);
+
+  const loadRecipe = async () => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      
+      // Parse ingredients
+      let ingredients: Ingredient[] = [];
+      if (data.ingredients) {
+        if (typeof data.ingredients === 'string') {
+          ingredients = JSON.parse(data.ingredients);
+        } else if (Array.isArray(data.ingredients)) {
+          ingredients = data.ingredients as unknown as Ingredient[];
+        }
+      }
+      
+      setRecipe({
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        prep_time_minutes: data.prep_time_minutes,
+        servings: data.servings,
+        difficulty: data.difficulty,
+        tags: data.tags || [],
+        ingredients: ingredients,
+        steps: data.steps || [],
+        image_url: data.image_url,
+      });
+    } catch (error) {
+      console.error('Error loading recipe:', error);
+      toast.error('Receita não encontrada');
+      navigate('/app/chat');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const checkIfSaved = async () => {
+    if (!id || !user) return;
+
+    try {
+      const { data } = await supabase
+        .from('saved_recipes')
+        .select('id')
+        .eq('recipe_id', id)
+        .eq('user_id', user.id)
+        .single();
+
+      setIsSaved(!!data);
+    } catch {
+      setIsSaved(false);
+    }
+  };
+
+  const toggleSave = async () => {
+    if (!id || !user) {
+      toast.error('Faça login para salvar receitas');
+      return;
+    }
+
+    try {
+      if (isSaved) {
+        await supabase
+          .from('saved_recipes')
+          .delete()
+          .eq('recipe_id', id)
+          .eq('user_id', user.id);
+        setIsSaved(false);
+        toast.success('Receita removida dos favoritos');
+      } else {
+        await supabase
+          .from('saved_recipes')
+          .insert([{ recipe_id: id, user_id: user.id }]);
+        setIsSaved(true);
+        toast.success('Receita salva!');
+      }
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      toast.error('Erro ao salvar receita');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!recipe) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Receita não encontrada</p>
+      </div>
+    );
+  }
+
+  const userIngredients = recipe.ingredients.filter(i => i.fromUser);
+  const extraIngredients = recipe.ingredients.filter(i => !i.fromUser);
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header Image */}
-      <div className="relative aspect-[4/3] bg-muted">
-        {sampleRecipe.imageUrl ? (
-          <img 
-            src={sampleRecipe.imageUrl} 
-            alt={sampleRecipe.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted">
-            <div className="w-20 h-20 text-muted-foreground/20" />
-          </div>
-        )}
-        
+      {/* Header */}
+      <div className="relative bg-gradient-to-br from-primary/20 to-accent/20 pt-12 pb-20">
         {/* Top controls */}
-        <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between">
+        <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between safe-area-top">
           <button
             onClick={() => navigate(-1)}
             className="w-10 h-10 rounded-full bg-card/80 backdrop-blur-sm flex items-center justify-center shadow-soft"
@@ -85,7 +178,7 @@ export default function Recipe() {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
-            onClick={() => setIsSaved(!isSaved)}
+            onClick={toggleSave}
             className="w-10 h-10 rounded-full bg-card/80 backdrop-blur-sm flex items-center justify-center shadow-soft"
           >
             {isSaved ? (
@@ -95,42 +188,50 @@ export default function Recipe() {
             )}
           </button>
         </div>
+
+        {/* Title preview */}
+        <div className="px-4 pt-8">
+          <h1 className="font-display font-bold text-2xl text-center">
+            {recipe.title}
+          </h1>
+        </div>
       </div>
 
       {/* Content */}
-      <main className="px-4 -mt-6 relative z-10">
-        <div className="bg-card rounded-t-3xl shadow-elevated pt-6">
-          {/* Title & Meta */}
+      <main className="px-4 -mt-12 relative z-10">
+        <div className="bg-card rounded-3xl shadow-elevated pt-6">
+          {/* Meta */}
           <div className="px-4 pb-4 border-b border-border">
-            <h1 className="font-display font-bold text-2xl mb-2">
-              {sampleRecipe.title}
-            </h1>
-            <p className="text-muted-foreground text-sm mb-4">
-              {sampleRecipe.description}
-            </p>
+            {recipe.description && (
+              <p className="text-muted-foreground text-sm mb-4">
+                {recipe.description}
+              </p>
+            )}
 
             <div className="flex items-center gap-4 text-sm">
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock className="w-4 h-4" />
-                {sampleRecipe.prepTime} min
+                {recipe.prep_time_minutes} min
               </span>
               <span className="flex items-center gap-1.5 text-muted-foreground">
                 <Users className="w-4 h-4" />
-                {sampleRecipe.servings} porções
+                {recipe.servings} porções
               </span>
               <span className="chip chip-primary">
-                {difficultyLabels[sampleRecipe.difficulty]}
+                {difficultyLabels[recipe.difficulty] || recipe.difficulty}
               </span>
             </div>
 
             {/* Tags */}
-            <div className="flex flex-wrap gap-2 mt-4">
-              {sampleRecipe.tags.map((tag) => (
-                <span key={tag} className="chip chip-muted text-xs">
-                  {tag}
-                </span>
-              ))}
-            </div>
+            {recipe.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {recipe.tags.map((tag) => (
+                  <span key={tag} className="chip chip-muted text-xs">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tab Navigation */}
@@ -144,7 +245,7 @@ export default function Recipe() {
                   : "text-muted-foreground"
               )}
             >
-              Ingredientes
+              Ingredientes ({recipe.ingredients.length})
               {activeTab === "ingredients" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
               )}
@@ -158,7 +259,7 @@ export default function Recipe() {
                   : "text-muted-foreground"
               )}
             >
-              Modo de preparo
+              Modo de preparo ({recipe.steps.length})
               {activeTab === "steps" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
               )}
@@ -168,53 +269,86 @@ export default function Recipe() {
           {/* Tab Content */}
           <div className="px-4 py-4">
             {activeTab === "ingredients" ? (
-              <div className="space-y-3">
-                {sampleRecipe.ingredients.map((ingredient, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-xl",
-                      ingredient.have ? "bg-muted/50" : "bg-accent/10"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-xs",
-                      ingredient.have 
-                        ? "bg-success/20 text-success" 
-                        : "bg-accent/20 text-accent"
-                    )}>
-                      {ingredient.have ? <Check className="w-3 h-3" /> : "!"}
-                    </div>
-                    <span className="flex-1 text-sm">
-                      {ingredient.name}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {ingredient.qty} {ingredient.unit}
-                    </span>
-                  </div>
-                ))}
-
-                {/* Missing items alert */}
-                {missingItems.length > 0 && (
-                  <div className="mt-4 p-4 bg-accent/10 rounded-2xl">
-                    <p className="text-sm font-medium text-foreground mb-2">
-                      Você precisa de {missingItems.length} itens
+              <div className="space-y-4">
+                {/* User ingredients */}
+                {userIngredients.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase">
+                      Seus ingredientes
                     </p>
-                    <Button 
-                      variant="accent" 
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {}}
-                    >
-                      <ShoppingCart className="w-4 h-4 mr-2" />
-                      Gerar lista de compras (Pro)
-                    </Button>
+                    <div className="space-y-2">
+                      {userIngredients.map((ingredient, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-3 p-3 rounded-xl bg-success/10"
+                        >
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center bg-success/20 text-success">
+                            <Check className="w-3 h-3" />
+                          </div>
+                          <span className="flex-1 text-sm">
+                            {ingredient.name}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {ingredient.qty} {ingredient.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Extra ingredients */}
+                {extraIngredients.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2 uppercase">
+                      Ingredientes extras
+                    </p>
+                    <div className="space-y-2">
+                      {extraIngredients.map((ingredient, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-3 p-3 rounded-xl bg-muted/50"
+                        >
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center bg-muted text-muted-foreground text-xs">
+                            +
+                          </div>
+                          <span className="flex-1 text-sm">
+                            {ingredient.name}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {ingredient.qty} {ingredient.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* If no separation, show all */}
+                {userIngredients.length === 0 && extraIngredients.length === 0 && recipe.ingredients.length > 0 && (
+                  <div className="space-y-2">
+                    {recipe.ingredients.map((ingredient, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-muted/50"
+                      >
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-primary/20 text-primary text-xs">
+                          {i + 1}
+                        </div>
+                        <span className="flex-1 text-sm">
+                          {ingredient.name}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {ingredient.qty} {ingredient.unit}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
             ) : (
               <ol className="space-y-4">
-                {sampleRecipe.steps.map((step, i) => (
+                {recipe.steps.map((step, i) => (
                   <li key={i} className="flex gap-4">
                     <span className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary shrink-0">
                       {i + 1}
@@ -237,7 +371,7 @@ export default function Recipe() {
             variant="outline"
             size="lg"
             className="flex-1"
-            onClick={() => setIsSaved(!isSaved)}
+            onClick={toggleSave}
           >
             {isSaved ? (
               <>

@@ -14,6 +14,65 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          recipes_data: Json | null
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          recipes_data?: Json | null
+          role: string
+          thread_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          recipes_data?: Json | null
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "chat_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_threads: {
+        Row: {
+          created_at: string
+          id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -52,6 +111,83 @@ export type Database = {
           weekly_usage_reset_at?: string
         }
         Relationships: []
+      }
+      recipes: {
+        Row: {
+          created_at: string
+          description: string | null
+          difficulty: string
+          id: string
+          image_url: string | null
+          ingredients: Json
+          prep_time_minutes: number
+          servings: number
+          source_ingredients: string[] | null
+          steps: string[]
+          tags: string[] | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          difficulty?: string
+          id?: string
+          image_url?: string | null
+          ingredients?: Json
+          prep_time_minutes?: number
+          servings?: number
+          source_ingredients?: string[] | null
+          steps?: string[]
+          tags?: string[] | null
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          difficulty?: string
+          id?: string
+          image_url?: string | null
+          ingredients?: Json
+          prep_time_minutes?: number
+          servings?: number
+          source_ingredients?: string[] | null
+          steps?: string[]
+          tags?: string[] | null
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      saved_recipes: {
+        Row: {
+          created_at: string
+          id: string
+          recipe_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipe_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipe_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_recipes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
