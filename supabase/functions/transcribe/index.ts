@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -20,6 +19,8 @@ serve(async (req) => {
       throw new Error("No audio data provided");
     }
 
+    console.log("Processing audio transcription, mimeType:", mimeType);
+
     // Decode base64 audio
     const binaryString = atob(audio);
     const bytes = new Uint8Array(binaryString.length);
@@ -27,26 +28,49 @@ serve(async (req) => {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // Create form data for Whisper API
-    const formData = new FormData();
-    const blob = new Blob([bytes], { type: mimeType || "audio/webm" });
-    formData.append("file", blob, "audio.webm");
-    formData.append("model", "whisper-1");
-    formData.append("language", "pt");
+    console.log("Audio size:", bytes.length, "bytes");
 
-    // Use Lovable AI Gateway for transcription
+    // Use Lovable AI Gateway for transcription via chat completions with audio
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    // Use OpenAI Whisper through the gateway
-    const response = await fetch("https://ai-gateway.lovable.dev/v1/audio/transcriptions", {
+    // Convert audio to base64 data URL format for the API
+    const audioDataUrl = `data:${mimeType || "audio/webm"};base64,${audio}`;
+
+    // Use Gemini model to transcribe audio
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
-      body: formData,
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content: "Você é um assistente de transcrição de áudio. Transcreva o áudio fornecido para texto em português brasileiro. Retorne APENAS a transcrição, sem comentários adicionais."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Por favor, transcreva este áudio para texto:"
+              },
+              {
+                type: "input_audio",
+                input_audio: {
+                  data: audio,
+                  format: mimeType?.includes("mp4") ? "mp4" : "webm"
+                }
+              }
+            ]
+          }
+        ]
+      }),
     });
 
     if (!response.ok) {
@@ -56,9 +80,12 @@ serve(async (req) => {
     }
 
     const result = await response.json();
+    const transcript = result.choices?.[0]?.message?.content || "";
+
+    console.log("Transcription result:", transcript);
 
     return new Response(
-      JSON.stringify({ transcript: result.text }),
+      JSON.stringify({ transcript }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }

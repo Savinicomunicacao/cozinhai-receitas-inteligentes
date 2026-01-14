@@ -112,6 +112,30 @@ export type Database = {
         }
         Relationships: []
       }
+      recipe_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       recipes: {
         Row: {
           created_at: string
@@ -120,6 +144,7 @@ export type Database = {
           id: string
           image_url: string | null
           ingredients: Json
+          is_manual: boolean | null
           prep_time_minutes: number
           servings: number
           source_ingredients: string[] | null
@@ -135,6 +160,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           ingredients?: Json
+          is_manual?: boolean | null
           prep_time_minutes?: number
           servings?: number
           source_ingredients?: string[] | null
@@ -150,6 +176,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           ingredients?: Json
+          is_manual?: boolean | null
           prep_time_minutes?: number
           servings?: number
           source_ingredients?: string[] | null
@@ -163,23 +190,33 @@ export type Database = {
       saved_recipes: {
         Row: {
           created_at: string
+          folder_id: string | null
           id: string
           recipe_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          folder_id?: string | null
           id?: string
           recipe_id: string
           user_id: string
         }
         Update: {
           created_at?: string
+          folder_id?: string | null
           id?: string
           recipe_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "saved_recipes_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_folders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "saved_recipes_recipe_id_fkey"
             columns: ["recipe_id"]

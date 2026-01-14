@@ -18,6 +18,7 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
+  isPro: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -25,6 +26,7 @@ interface AuthContextType {
   completeOnboarding: (preferences: Record<string, string[]>) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -154,6 +156,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshProfile();
   };
 
+  const isPro = profile?.is_pro ?? false;
+
   return (
     <AuthContext.Provider
       value={{
@@ -161,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile,
         loading,
+        isPro,
         signUp,
         signIn,
         signOut,
@@ -173,6 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </AuthContext.Provider>
   );
 }
+
 
 export function useAuth() {
   const context = useContext(AuthContext);
