@@ -87,6 +87,28 @@ Considere estas preferências ao sugerir receitas. Por exemplo, se tem restriç�
 
     console.log("Sending request to Lovable AI Gateway...");
     
+    // Process messages to handle images
+    const processedMessages = messages.map((msg: any) => {
+      if (msg.content && msg.content.startsWith('[IMAGEM:')) {
+        // Extract base64 image data
+        const imageData = msg.content.replace('[IMAGEM:', '').replace(']', '');
+        return {
+          role: msg.role,
+          content: [
+            {
+              type: "image_url",
+              image_url: { url: imageData }
+            },
+            {
+              type: "text",
+              text: "Identifique os ingredientes visíveis nesta foto e sugira receitas que eu possa fazer com eles. Liste cada ingrediente que você consegue identificar."
+            }
+          ]
+        };
+      }
+      return msg;
+    });
+    
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -94,10 +116,10 @@ Considere estas preferências ao sugerir receitas. Por exemplo, se tem restriç�
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: enhancedSystemPrompt },
-          ...messages,
+          ...processedMessages,
         ],
         stream: true,
       }),

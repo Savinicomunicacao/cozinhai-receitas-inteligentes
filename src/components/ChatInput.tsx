@@ -3,6 +3,7 @@ import { Mic, Camera, Send, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
@@ -35,6 +36,32 @@ export function ChatInput({
     }
   };
 
+  const transcribeAudio = async (audioBlob: Blob): Promise<string | null> => {
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+      });
+      reader.readAsDataURL(audioBlob);
+      const base64Audio = await base64Promise;
+
+      // Call transcription edge function
+      const { data, error } = await supabase.functions.invoke('transcribe', {
+        body: { audio: base64Audio, mimeType: audioBlob.type }
+      });
+
+      if (error) throw error;
+      return data.transcript;
+    } catch (error) {
+      console.error("Transcription error:", error);
+      return null;
+    }
+  };
+
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -62,22 +89,18 @@ export function ChatInput({
         
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
-        // Convert to base64 and send to transcription
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64Audio = (reader.result as string).split(',')[1];
-          
-          // For now, we'll just inform the user - transcription would need OpenAI Whisper
-          // In a full implementation, this would call an edge function for transcription
-          toast.info("Áudio gravado! Transcrevendo...");
-          
-          // Simulate transcription - in production, call Whisper API
-          setTimeout(() => {
-            onSendAudio?.("(Áudio: funcionalidade de transcrição em desenvolvimento)");
-            setIsProcessingAudio(false);
-          }, 1000);
-        };
-        reader.readAsDataURL(audioBlob);
+        toast.info("Transcrevendo áudio...");
+        
+        const transcript = await transcribeAudio(audioBlob);
+        
+        if (transcript) {
+          onSendAudio?.(transcript);
+          toast.success("Áudio transcrito com sucesso!");
+        } else {
+          toast.error("Não foi possível transcrever o áudio. Tente novamente.");
+        }
+        
+        setIsProcessingAudio(false);
         
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
@@ -149,10 +172,7 @@ export function ChatInput({
     reader.onloadend = () => {
       const base64 = reader.result as string;
       onSendImage?.(base64);
-      toast.success("Imagem enviada! Analisando...");
-      
-      // For now, send a message about the image
-      onSendMessage("(Enviou uma foto dos ingredientes)");
+      toast.success("Imagem enviada! Analisando ingredientes...");
     };
     reader.readAsDataURL(file);
 
