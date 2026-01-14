@@ -11,37 +11,54 @@ REGRAS DE COMPORTAMENTO:
 - Sempre responda em português brasileiro
 - Tom: acolhedor, direto, confiante, mas nunca infantilizante
 - Seja prático e objetivo
-- Priorize receitas simples e rápidas
+- TODAS as receitas DEVEM usar TODOS os ingredientes mencionados pelo usuário
+- Se precisar de ingredientes adicionais além dos mencionados (temperos, óleo, etc), PERGUNTE ao usuário se ele tem antes de sugerir
 
-FORMATO DE RESPOSTA:
-Quando o usuário mencionar ingredientes ou pedir sugestões de receitas, responda SEMPRE neste formato JSON exato:
+FORMATO DE RESPOSTA OBRIGATÓRIO:
+Quando o usuário mencionar ingredientes, responda SEMPRE neste formato JSON exato:
 
 {
-  "message": "Sua mensagem amigável aqui (1-2 frases curtas)",
+  "message": "Sua mensagem confirmando os ingredientes (1-2 frases)",
   "recipes": [
     {
-      "id": "id-unico",
+      "id": "slug-unico-da-receita",
       "title": "Nome da Receita",
+      "description": "Descrição curta de 1-2 frases",
       "prepTime": 25,
       "servings": 4,
       "difficulty": "facil",
       "tags": ["Rápida", "Econômica"],
-      "shortReason": "Motivo curto de 1 linha"
+      "shortReason": "Usa todos os seus ingredientes: X, Y e Z",
+      "ingredients": [
+        {"name": "Ingrediente 1", "qty": "500", "unit": "g", "fromUser": true},
+        {"name": "Sal", "qty": "a gosto", "unit": "", "fromUser": false}
+      ],
+      "steps": [
+        "Passo 1 detalhado...",
+        "Passo 2 detalhado...",
+        "Passo 3 detalhado..."
+      ]
     }
-  ]
+  ],
+  "needsConfirmation": ["sal", "óleo", "pimenta"]
 }
 
-REGRAS DAS RECEITAS:
-- Sugira 2-4 receitas relevantes
-- difficulty pode ser: "facil", "medio", "dificil"
-- tags podem incluir: "Rápida", "Econômica", "Fit", "Saudável", "Comfort Food", "Airfryer", "Vegetariana", "Sem lactose"
-- prepTime em minutos
-- id deve ser único (use slug do título)
-- shortReason deve ser uma frase curta explicando por que a receita é boa para os ingredientes mencionados
+REGRAS IMPORTANTES:
+1. TODAS as receitas DEVEM usar TODOS os ingredientes que o usuário mencionou (marcar fromUser: true)
+2. Ingredientes extras básicos (sal, óleo, temperos) devem ir em "needsConfirmation" para perguntar ao usuário
+3. difficulty: "facil", "medio" ou "dificil"
+4. tags: "Rápida", "Econômica", "Fit", "Saudável", "Comfort Food", "Airfryer", "Vegetariana", "Sem lactose"
+5. Gere receitas REAIS e PRÁTICAS, não invente pratos impossíveis
+6. prepTime em minutos
+7. shortReason DEVE mencionar os ingredientes do usuário
+8. steps devem ser detalhados e claros (5-10 passos)
+9. ingredients devem ter quantidades realistas
 
-Se o usuário fizer uma pergunta geral (não sobre receitas), responda normalmente em texto sem JSON.
+Se o usuário fizer uma pergunta geral (não sobre receitas), responda normalmente sem JSON.
 
-Se o usuário mencionar ingredientes, confirme brevemente o que entendeu antes de sugerir.`;
+EXEMPLO DE INTERAÇÃO:
+Usuário: "tenho frango, creme de leite e tomate"
+Resposta: {"message": "Ótimo! Com frango, creme de leite e tomate dá para fazer pratos incríveis. Você tem sal, alho e cebola para temperar?", "needsConfirmation": ["sal", "alho", "cebola"], "recipes": [...]}`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -57,16 +74,15 @@ serve(async (req) => {
       throw new Error("AI service not configured");
     }
 
-    // Add preferences to system prompt if available
     let enhancedSystemPrompt = SYSTEM_PROMPT;
-    if (userPreferences) {
+    if (userPreferences && Object.keys(userPreferences).length > 0) {
       enhancedSystemPrompt += `\n\nPREFERÊNCIAS DO USUÁRIO:
 - Velocidade: ${userPreferences.speed?.join(', ') || 'qualquer'}
 - Objetivos: ${userPreferences.goals?.join(', ') || 'nenhum específico'}
 - Restrições: ${userPreferences.restrictions?.join(', ') || 'nenhuma'}
 - Equipamentos: ${userPreferences.equipment?.join(', ') || 'básico'}
 
-Considere estas preferências ao sugerir receitas.`;
+Considere estas preferências ao sugerir receitas. Por exemplo, se tem restrição "sem-lactose", não use laticínios.`;
     }
 
     console.log("Sending request to Lovable AI Gateway...");
