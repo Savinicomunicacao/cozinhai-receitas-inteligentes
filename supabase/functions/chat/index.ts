@@ -87,11 +87,11 @@ Considere estas preferências ao sugerir receitas. Por exemplo, se tem restriç�
 
     console.log("Sending request to Lovable AI Gateway...");
     
-    // Process messages to handle images
+    // Process messages to handle images and multimodal content
     const processedMessages = messages.map((msg: any) => {
-      if (msg.content && msg.content.startsWith('[IMAGEM:')) {
-        // Extract base64 image data
-        const imageData = msg.content.replace('[IMAGEM:', '').replace(']', '');
+      // Handle image prefix format from chat
+      if (msg.content && typeof msg.content === 'string' && msg.content.startsWith('[IMAGEM:')) {
+        const imageData = msg.content.replace('[IMAGEM:', '').replace(']', '').trim();
         return {
           role: msg.role,
           content: [
@@ -101,10 +101,14 @@ Considere estas preferências ao sugerir receitas. Por exemplo, se tem restriç�
             },
             {
               type: "text",
-              text: "Identifique os ingredientes visíveis nesta foto e sugira receitas que eu possa fazer com eles. Liste cada ingrediente que você consegue identificar."
+              text: "Identifique todos os ingredientes visíveis nesta foto. Liste cada ingrediente claramente e depois sugira 2-3 receitas que posso fazer com esses ingredientes."
             }
           ]
         };
+      }
+      // Handle array content format (already multimodal)
+      if (msg.content && Array.isArray(msg.content)) {
+        return msg;
       }
       return msg;
     });

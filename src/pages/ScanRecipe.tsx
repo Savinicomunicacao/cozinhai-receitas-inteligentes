@@ -35,6 +35,47 @@ export default function ScanRecipe() {
 
   const parseRecipeWithAI = async (content: string, type: "image" | "text"): Promise<ParsedRecipe | null> => {
     try {
+      const imagePrompt = `IMPORTANTE: Você é um especialista em OCR e extração de receitas culinárias.
+
+Analise esta imagem cuidadosamente. A imagem contém uma RECEITA - pode ser:
+- Texto digitado/impresso
+- Texto manuscrito/escrito à mão
+- Uma foto de um livro de receitas
+- Uma captura de tela de uma receita
+
+INSTRUÇÕES:
+1. PRIMEIRO: Leia TODO o texto visível na imagem usando OCR
+2. DEPOIS: Extraia as informações da receita do texto lido
+3. Se não conseguir identificar claramente, faça o melhor esforço com o que está visível
+
+Retorne no formato JSON com os campos:
+- title (string): nome da receita
+- description (string curta): descrição em 1-2 frases
+- ingredients (array de {name, quantity, unit}): lista de ingredientes
+- steps (array de strings): passos do preparo
+- prepTime (número): tempo de preparo em minutos
+- servings (número): porções
+- difficulty ('facil', 'medio' ou 'dificil')
+- tags (array de strings: 'Café da manhã', 'Almoço', 'Jantar', 'Lanche', 'Fit', 'Saudável', etc)
+
+RETORNE APENAS O JSON, sem markdown, sem \`\`\` ou texto adicional.`;
+
+      const textPrompt = `Analise esta transcrição de uma receita ditada e extraia todas as informações. Se alguma informação não estiver clara, use valores padrão razoáveis.
+
+Retorne no formato JSON com os campos:
+- title (string): nome da receita
+- description (string curta): descrição em 1-2 frases
+- ingredients (array de {name, quantity, unit}): lista de ingredientes
+- steps (array de strings): passos do preparo
+- prepTime (número): tempo de preparo em minutos
+- servings (número): porções
+- difficulty ('facil', 'medio' ou 'dificil')
+- tags (array de strings: 'Café da manhã', 'Almoço', 'Jantar', 'Lanche', 'Fit', 'Saudável', etc)
+
+RETORNE APENAS O JSON, sem markdown ou texto adicional.
+
+Transcrição: ${content}`;
+
       const { data, error } = await supabase.functions.invoke('chat', {
         body: {
           messages: [
@@ -42,10 +83,10 @@ export default function ScanRecipe() {
               role: "user",
               content: type === "image" 
                 ? [
-                    { type: "text", text: "Analise esta imagem de uma receita e extraia todas as informações. Retorne no formato JSON com os campos: title (string), description (string curta), ingredients (array de {name, quantity, unit}), steps (array de strings), prepTime (minutos como número), servings (número), difficulty ('facil', 'medio' ou 'dificil'), tags (array de strings como 'Café da manhã', 'Jantar', 'Fit', etc). RETORNE APENAS O JSON, sem markdown ou texto adicional." },
+                    { type: "text", text: imagePrompt },
                     { type: "image_url", image_url: { url: content } }
                   ]
-                : `Analise esta transcrição de uma receita e extraia todas as informações. Retorne no formato JSON com os campos: title (string), description (string curta), ingredients (array de {name, quantity, unit}), steps (array de strings), prepTime (minutos como número), servings (número), difficulty ('facil', 'medio' ou 'dificil'), tags (array de strings como 'Café da manhã', 'Jantar', 'Fit', etc). RETORNE APENAS O JSON, sem markdown ou texto adicional.\n\nTranscrição: ${content}`
+                : textPrompt
             }
           ]
         }
