@@ -1,78 +1,34 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatInput } from "@/components/ChatInput";
 import { ChatMessage } from "@/components/ChatMessage";
 import { FilterChips } from "@/components/FilterChips";
 import { PaywallModal } from "@/components/PaywallModal";
-import { ChefHat } from "lucide-react";
+import { ChefHat, Loader2 } from "lucide-react";
+import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/hooks/useAuth";
+import { useState } from "react";
 
-// Import recipe images
-import frangoCremoso from "@/assets/recipe-frango-cremoso.jpg";
-import panquecaBanana from "@/assets/recipe-panqueca-banana.jpg";
-import macarrao from "@/assets/recipe-macarrao.jpg";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  recipes?: {
-    id: string;
-    title: string;
-    imageUrl?: string;
-    prepTime: number;
-    servings: number;
-    difficulty: "facil" | "medio" | "dificil";
-    tags: string[];
-    shortReason?: string;
-  }[];
-}
-
-// Sample recipes for demo
-const sampleRecipes = [
-  {
-    id: "1",
-    title: "Frango Cremoso Rápido",
-    imageUrl: frangoCremoso,
-    prepTime: 25,
-    servings: 4,
-    difficulty: "facil" as const,
-    tags: ["Rápida", "Proteína"],
-    shortReason: "Perfeito com o frango e creme que você tem!",
-  },
-  {
-    id: "2",
-    title: "Macarrão Alho e Óleo com Toque Especial",
-    imageUrl: macarrao,
-    prepTime: 15,
-    servings: 2,
-    difficulty: "facil" as const,
-    tags: ["Rápida", "Econômica"],
-    shortReason: "Simples e saboroso com seus ingredientes.",
-  },
-  {
-    id: "3",
-    title: "Salada Completa com Frango",
-    prepTime: 20,
-    servings: 2,
-    difficulty: "facil" as const,
-    tags: ["Fit", "Saudável"],
-    shortReason: "Uma opção leve e nutritiva.",
-  },
+const availableFilters = [
+  "Rápida",
+  "Econômica", 
+  "Fit",
+  "Airfryer",
+  "Vegetariana",
+  "Sem lactose",
 ];
 
 export default function Chat() {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "Olá! 👋 Sou seu assistente de cozinha. Me conta o que você tem na geladeira ou o que está com vontade de comer, e eu sugiro receitas deliciosas!",
-    },
-  ]);
+  const { messages, isLoading, sendMessage } = useChat();
+  const { profile } = useAuth();
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [usageCount] = useState(3); // Demo: 3 of 7 used
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isPro = profile?.is_pro ?? false;
+  const weeklyUsage = profile?.weekly_usage_count ?? 0;
+  const weeklyLimit = 7;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -83,24 +39,12 @@ export default function Chat() {
   }, [messages]);
 
   const handleSendMessage = (text: string) => {
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: text,
-    };
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `Entendi! Com ${text}, tenho ótimas sugestões para você:`,
-        recipes: sampleRecipes,
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-    }, 1000);
+    // Include active filters in the message context
+    let messageWithFilters = text;
+    if (activeFilters.length > 0) {
+      messageWithFilters = `${text} (Filtros: ${activeFilters.join(', ')})`;
+    }
+    sendMessage(messageWithFilters);
   };
 
   const handleToggleFilter = (filter: string) => {
@@ -127,13 +71,13 @@ export default function Chat() {
             <div>
               <h1 className="font-display font-semibold text-lg">Cozinha.ai</h1>
               <p className="text-xs text-muted-foreground">
-                {usageCount}/7 sugestões esta semana
+                {isPro ? "Plano Pro ✨" : `${weeklyUsage}/${weeklyLimit} sugestões esta semana`}
               </p>
             </div>
           </div>
           
           <FilterChips
-            filters={[]}
+            filters={availableFilters}
             activeFilters={activeFilters}
             onToggle={handleToggleFilter}
           />
@@ -152,6 +96,15 @@ export default function Chat() {
             onSaveRecipe={(id) => console.log("Save recipe:", id)}
           />
         ))}
+        
+        {/* Loading indicator */}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span className="text-sm">Pensando em receitas...</span>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </main>
 
@@ -159,9 +112,10 @@ export default function Chat() {
       <div className="sticky bottom-[72px] bg-background">
         <ChatInput
           onSendMessage={handleSendMessage}
-          onSendAudio={() => setShowPaywall(true)}
+          onSendAudio={(transcript) => handleSendMessage(transcript)}
           onSendImage={() => setShowPaywall(true)}
-          isPro={false}
+          disabled={isLoading}
+          isPro={isPro}
         />
       </div>
 

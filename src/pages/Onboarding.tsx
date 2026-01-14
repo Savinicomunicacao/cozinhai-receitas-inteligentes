@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChefHat, Clock, Target, AlertCircle, Microwave, ChevronRight, Check } from "lucide-react";
+import { Clock, Target, AlertCircle, Microwave, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface OnboardingStep {
   id: string;
@@ -74,8 +76,10 @@ const steps: OnboardingStep[] = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const { completeOnboarding, user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [selections, setSelections] = useState<Record<string, string[]>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   const step = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
@@ -97,18 +101,36 @@ export default function Onboarding() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (isLastStep) {
-      // Save preferences and navigate to chat
-      console.log("Preferences:", selections);
-      navigate("/app/chat");
+      setIsSaving(true);
+      try {
+        await completeOnboarding(selections);
+        toast.success("Preferências salvas!");
+        navigate("/app/chat");
+      } catch (error) {
+        console.error("Error saving preferences:", error);
+        toast.error("Erro ao salvar preferências");
+      } finally {
+        setIsSaving(false);
+      }
     } else {
       setCurrentStep((prev) => prev + 1);
     }
   };
 
-  const handleSkip = () => {
-    navigate("/app/chat");
+  const handleSkip = async () => {
+    // Still mark onboarding as complete even if skipped
+    setIsSaving(true);
+    try {
+      await completeOnboarding({});
+      navigate("/app/chat");
+    } catch (error) {
+      console.error("Error skipping onboarding:", error);
+      navigate("/app/chat");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const Icon = step.icon;
@@ -186,14 +208,15 @@ export default function Onboarding() {
             size="lg"
             className="w-full"
             onClick={handleNext}
-            disabled={currentSelections.length === 0}
+            disabled={currentSelections.length === 0 || isSaving}
           >
-            {isLastStep ? "Começar a cozinhar" : "Continuar"}
+            {isSaving ? "Salvando..." : isLastStep ? "Começar a cozinhar" : "Continuar"}
             <ChevronRight className="w-5 h-5" />
           </Button>
           
           <button
             onClick={handleSkip}
+            disabled={isSaving}
             className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
           >
             Pular por enquanto
