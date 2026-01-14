@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 import Recipe from "./pages/Recipe";
 import Cook from "./pages/Cook";
 import History from "./pages/History";
+import ScanRecipe from "./pages/ScanRecipe";
 import Paywall from "./pages/Paywall";
 import NotFound from "./pages/NotFound";
 
@@ -116,7 +117,8 @@ function AppRoutes() {
       <Route path="/app/recipe/:id" element={<ProtectedRoute><Recipe /></ProtectedRoute>} />
       <Route path="/app/cook/:id" element={<ProtectedRoute><Cook /></ProtectedRoute>} />
       <Route path="/app/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-      
+      <Route path="/app/scan-recipe" element={<ProtectedRoute><ScanRecipe /></ProtectedRoute>} />
+
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>
