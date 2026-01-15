@@ -35,30 +35,40 @@ export default function ScanRecipe() {
 
   const parseRecipeWithAI = async (content: string, type: "image" | "text"): Promise<ParsedRecipe | null> => {
     try {
-      const imagePrompt = `IMPORTANTE: Você é um especialista em OCR e extração de receitas culinárias.
+      const imagePrompt = `Você é um especialista em OCR (reconhecimento óptico de caracteres) e extração de receitas culinárias.
 
-Analise esta imagem cuidadosamente. A imagem contém uma RECEITA - pode ser:
-- Texto digitado/impresso
+TAREFA: Analise esta imagem e extraia a receita culinária contida nela.
+
+A imagem pode conter:
+- Texto digitado ou impresso
 - Texto manuscrito/escrito à mão
-- Uma foto de um livro de receitas
-- Uma captura de tela de uma receita
+- Foto de livro de receitas, revista ou caderno
+- Captura de tela de site ou aplicativo
+- Qualquer formato com informações de receita
 
-INSTRUÇÕES:
-1. PRIMEIRO: Leia TODO o texto visível na imagem usando OCR
-2. DEPOIS: Extraia as informações da receita do texto lido
-3. Se não conseguir identificar claramente, faça o melhor esforço com o que está visível
+INSTRUÇÕES PASSO A PASSO:
+1. PRIMEIRO: Use OCR para ler CADA palavra e número visível na imagem
+2. SEGUNDO: Identifique o nome/título da receita
+3. TERCEIRO: Identifique os ingredientes com suas quantidades
+4. QUARTO: Identifique os passos/modo de preparo
+5. QUINTO: Estime tempo de preparo, porções e dificuldade se não estiverem explícitos
 
-Retorne no formato JSON com os campos:
-- title (string): nome da receita
-- description (string curta): descrição em 1-2 frases
-- ingredients (array de {name, quantity, unit}): lista de ingredientes
-- steps (array de strings): passos do preparo
-- prepTime (número): tempo de preparo em minutos
-- servings (número): porções
-- difficulty ('facil', 'medio' ou 'dificil')
-- tags (array de strings: 'Café da manhã', 'Almoço', 'Jantar', 'Lanche', 'Fit', 'Saudável', etc)
+Se o texto estiver parcialmente legível, extraia o máximo possível.
+Se não houver receita na imagem, retorne um JSON com title: "Receita não identificada".
 
-RETORNE APENAS O JSON, sem markdown, sem \`\`\` ou texto adicional.`;
+FORMATO DE RESPOSTA (JSON puro, sem markdown):
+{
+  "title": "Nome da receita",
+  "description": "Descrição breve",
+  "ingredients": [{"name": "ingrediente", "quantity": "quantidade", "unit": "unidade"}],
+  "steps": ["Passo 1", "Passo 2"],
+  "prepTime": 30,
+  "servings": 4,
+  "difficulty": "facil",
+  "tags": ["Almoço", "Saudável"]
+}
+
+RETORNE APENAS O JSON, sem \`\`\`json, sem \`\`\` ou texto adicional.`;
 
       const textPrompt = `Analise esta transcrição de uma receita ditada e extraia todas as informações. Se alguma informação não estiver clara, use valores padrão razoáveis.
 
