@@ -37,38 +37,46 @@ export default function ScanRecipe() {
     try {
       const imagePrompt = `Você é um especialista em OCR (reconhecimento óptico de caracteres) e extração de receitas culinárias.
 
-TAREFA: Analise esta imagem e extraia a receita culinária contida nela.
+TAREFA CRÍTICA: Extraia TODO o texto visível desta imagem PRIMEIRO, depois estruture como receita.
 
-A imagem pode conter:
-- Texto digitado ou impresso
-- Texto manuscrito/escrito à mão
-- Foto de livro de receitas, revista ou caderno
-- Captura de tela de site ou aplicativo
-- Qualquer formato com informações de receita
+ETAPA 1 - EXTRAÇÃO DE TEXTO (OCR):
+- Leia CADA palavra, número e símbolo visível na imagem
+- Inclua texto impresso, manuscrito, digital ou em qualquer formato
+- Não ignore nenhum texto, mesmo se parecer incompleto
 
-INSTRUÇÕES PASSO A PASSO:
-1. PRIMEIRO: Use OCR para ler CADA palavra e número visível na imagem
-2. SEGUNDO: Identifique o nome/título da receita
-3. TERCEIRO: Identifique os ingredientes com suas quantidades
-4. QUARTO: Identifique os passos/modo de preparo
-5. QUINTO: Estime tempo de preparo, porções e dificuldade se não estiverem explícitos
+ETAPA 2 - IDENTIFICAÇÃO DA RECEITA:
+Após extrair o texto, identifique:
+- Nome/título da receita (geralmente no topo ou em destaque)
+- Lista de ingredientes (procure por quantidades + nomes de alimentos)
+- Modo de preparo/passos (procure por instruções sequenciais)
+- Tempo de preparo, porções, dificuldade (se mencionados)
 
-Se o texto estiver parcialmente legível, extraia o máximo possível.
-Se não houver receita na imagem, retorne um JSON com title: "Receita não identificada".
+TIPOS DE IMAGEM SUPORTADOS:
+- Fotos de livros de receitas, revistas, cadernos
+- Receitas manuscritas/escritas à mão
+- Capturas de tela de sites ou aplicativos
+- Fotos de embalagens com receitas
+- Qualquer imagem com texto de receita
 
-FORMATO DE RESPOSTA (JSON puro, sem markdown):
+REGRAS IMPORTANTES:
+- Se o texto estiver borrado ou parcial, extraia o que for legível
+- Infira ingredientes e passos mesmo se não estiverem bem formatados
+- Use valores padrão razoáveis para campos não encontrados
+- Se NÃO houver receita na imagem, retorne: {"title": "Receita não identificada", "description": "Não foi possível identificar uma receita nesta imagem", "ingredients": [], "steps": [], "prepTime": 0, "servings": 0, "difficulty": "facil", "tags": []}
+
+FORMATO DE RESPOSTA (JSON puro, sem markdown, sem backticks):
 {
   "title": "Nome da receita",
-  "description": "Descrição breve",
-  "ingredients": [{"name": "ingrediente", "quantity": "quantidade", "unit": "unidade"}],
-  "steps": ["Passo 1", "Passo 2"],
+  "description": "Descrição breve em 1-2 frases",
+  "ingredients": [{"name": "ingrediente", "quantity": "quantidade numérica", "unit": "unidade de medida"}],
+  "steps": ["Passo 1 detalhado", "Passo 2 detalhado"],
   "prepTime": 30,
   "servings": 4,
   "difficulty": "facil",
   "tags": ["Almoço", "Saudável"]
 }
 
-RETORNE APENAS O JSON, sem \`\`\`json, sem \`\`\` ou texto adicional.`;
+RETORNE APENAS O JSON, sem nenhum texto antes ou depois.`;
 
       const textPrompt = `Analise esta transcrição de uma receita ditada e extraia todas as informações. Se alguma informação não estiver clara, use valores padrão razoáveis.
 

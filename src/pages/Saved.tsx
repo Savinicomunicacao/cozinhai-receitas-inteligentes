@@ -245,11 +245,25 @@ export default function Saved() {
     if (!user) return;
 
     try {
+      // First, find the saved_recipe record ID
+      const { data: savedRecipe, error: findError } = await supabase
+        .from('saved_recipes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('recipe_id', recipeId)
+        .single();
+
+      if (findError || !savedRecipe) {
+        console.error("Error finding saved recipe:", findError);
+        toast.error("Receita salva não encontrada");
+        return;
+      }
+
+      // Update using the saved_recipes ID
       const { error } = await supabase
         .from('saved_recipes')
         .update({ folder_id: folderId })
-        .eq('user_id', user.id)
-        .eq('recipe_id', recipeId);
+        .eq('id', savedRecipe.id);
 
       if (error) throw error;
 
