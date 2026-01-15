@@ -194,6 +194,10 @@ export function useShoppingList() {
   };
 
   const removeItem = async (id: string) => {
+    // Optimistic update - remove from UI immediately
+    const previousItems = items;
+    setItems((current) => current.filter((item) => item.id !== id));
+
     try {
       const { error } = await supabase
         .from("shopping_list_items")
@@ -202,8 +206,11 @@ export function useShoppingList() {
 
       if (error) throw error;
     } catch (error) {
+      // Rollback on error
+      setItems(previousItems);
       console.error("Error removing item:", error);
       toast.error("Erro ao remover item");
+      throw error;
     }
   };
 
