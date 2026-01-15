@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bookmark, FolderOpen, Plus, Folder, MoreVertical, Edit2, Trash2, ScanLine, LayoutGrid, List, Clock, ChefHat } from "lucide-react";
 import { RecipeCard } from "@/components/RecipeCard";
+import { SponsoredCard } from "@/components/SponsoredCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSponsoredContent } from "@/hooks/useSponsoredContent";
 import { cn } from "@/lib/utils";
 
 interface SavedRecipe {
@@ -43,7 +45,9 @@ type ViewMode = "cards" | "list";
 
 export default function Saved() {
   const navigate = useNavigate();
-  const { user, isPro } = useAuth();
+  const { user, profile } = useAuth();
+  const isPro = profile?.is_pro ?? false;
+  const { content: sponsoredContent } = useSponsoredContent("saved");
   const [savedRecipes, setSavedRecipes] = useState<SavedRecipe[]>([]);
   const [folders, setFolders] = useState<RecipeFolder[]>([]);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -432,6 +436,13 @@ export default function Saved() {
             ))}
           </div>
         </div>
+
+        {/* Sponsored content for non-Pro users */}
+        {!isPro && sponsoredContent && savedRecipes.length > 0 && (
+          <div className="mb-4">
+            <SponsoredCard content={sponsoredContent} variant="banner" />
+          </div>
+        )}
 
         {/* Recipes grid/list */}
         {isLoading ? (

@@ -11,9 +11,11 @@ import {
   Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SponsoredCard } from "@/components/SponsoredCard";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSponsoredContent } from "@/hooks/useSponsoredContent";
 import { toast } from "sonner";
 
 interface Ingredient {
@@ -45,11 +47,13 @@ const difficultyLabels: Record<string, string> = {
 export default function Recipe() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps">("ingredients");
+  const { content: sponsoredContent } = useSponsoredContent("recipe");
+  const isPro = profile?.is_pro ?? false;
 
   useEffect(() => {
     if (id) {
@@ -363,6 +367,13 @@ export default function Recipe() {
           </div>
         </div>
       </main>
+
+      {/* Sponsored content for non-Pro users */}
+      {!isPro && sponsoredContent && (
+        <div className="px-4 mb-4">
+          <SponsoredCard content={sponsoredContent} variant="banner" />
+        </div>
+      )}
 
       {/* Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t border-border safe-area-bottom">

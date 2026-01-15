@@ -11,8 +11,8 @@ interface PaywallModalProps {
 
 const benefits = [
   { icon: Zap, text: "Sugestões ilimitadas" },
-  { icon: Camera, text: "Envie fotos dos ingredientes" },
-  { icon: ListChecks, text: "Modo 'Cozinhar Comigo' passo a passo" },
+  { icon: Camera, text: "Escanear receitas de livros" },
+  { icon: ListChecks, text: "Pastas para organizar receitas" },
   { icon: Heart, text: "Favoritos ilimitados" },
   { icon: Sparkles, text: "Sem anúncios" },
 ];

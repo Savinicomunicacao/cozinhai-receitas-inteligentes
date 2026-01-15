@@ -19,13 +19,13 @@ const benefits = [
   },
   { 
     icon: Camera, 
-    title: "Foto dos ingredientes",
-    description: "Tire uma foto e deixe a IA identificar"
+    title: "Escanear receitas",
+    description: "Fotografe receitas de livros e revistas"
   },
   { 
     icon: ListChecks, 
-    title: "Modo Cozinhar Comigo",
-    description: "Acompanhamento passo a passo"
+    title: "Pastas organizadas",
+    description: "Organize suas receitas em pastas"
   },
   { 
     icon: Heart, 

@@ -123,16 +123,6 @@ export function ChatInput({
   }, [isRecording]);
 
   const handleMicClick = () => {
-    if (!isPro) {
-      toast.error("Função disponível apenas no plano Pro", {
-        action: {
-          label: "Ver planos",
-          onClick: () => window.location.href = "/paywall",
-        },
-      });
-      return;
-    }
-    
     if (isRecording) {
       stopRecording();
     } else {
@@ -141,16 +131,6 @@ export function ChatInput({
   };
 
   const handleCameraClick = () => {
-    if (!isPro) {
-      toast.error("Função disponível apenas no plano Pro", {
-        action: {
-          label: "Ver planos",
-          onClick: () => window.location.href = "/paywall",
-        },
-      });
-      return;
-    }
-    
     fileInputRef.current?.click();
   };
 
@@ -199,10 +179,7 @@ export function ChatInput({
           variant="ghost"
           size="icon"
           onClick={handleCameraClick}
-          className={cn(
-            "btn-icon shrink-0",
-            !isPro && "opacity-50"
-          )}
+          className="btn-icon shrink-0"
           disabled={disabled || isRecording}
         >
           <Camera className="w-5 h-5" />
@@ -239,8 +216,7 @@ export function ChatInput({
                 "absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9",
                 isRecording 
                   ? "btn-icon-accent animate-pulse-soft" 
-                  : "btn-icon-ghost",
-                !isPro && "opacity-50"
+                  : "btn-icon-ghost"
               )}
               disabled={disabled || isProcessingAudio}
             >
