@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -5,6 +6,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+// Process base64 in chunks to prevent memory issues
+function processBase64Chunks(base64String: string, chunkSize = 32768): Uint8Array {
+  const chunks: Uint8Array[] = [];
+  let position = 0;
+  
+  while (position < base64String.length) {
+    const chunk = base64String.slice(position, position + chunkSize);
+    const binaryChunk = atob(chunk);
+    const bytes = new Uint8Array(binaryChunk.length);
+    
+    for (let i = 0; i < binaryChunk.length; i++) {
+      bytes[i] = binaryChunk.charCodeAt(i);
+    }
+    
+    chunks.push(bytes);
+    position += chunkSize;
+  }
+
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return result;
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -20,59 +51,50 @@ serve(async (req) => {
     }
 
     const actualMimeType = mimeType || "audio/webm";
-    console.log("Processing audio transcription, mimeType:", actualMimeType);
+    console.log("Processing audio transcription with OpenAI Whisper");
+    console.log("Audio mimeType:", actualMimeType);
     console.log("Audio base64 length:", audio.length);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY not configured");
     }
 
-    // Use Gemini model with correct inline_data format for audio
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Process audio in chunks to prevent memory issues
+    const binaryAudio = processBase64Chunks(audio);
+    console.log("Binary audio size:", binaryAudio.length, "bytes");
+
+    // Determine file extension based on mimeType
+    let fileExtension = "webm";
+    if (actualMimeType.includes("mp4") || actualMimeType.includes("m4a")) {
+      fileExtension = "m4a";
+    } else if (actualMimeType.includes("mp3") || actualMimeType.includes("mpeg")) {
+      fileExtension = "mp3";
+    } else if (actualMimeType.includes("wav")) {
+      fileExtension = "wav";
+    } else if (actualMimeType.includes("ogg")) {
+      fileExtension = "ogg";
+    }
+
+    // Prepare form data for OpenAI Whisper API
+    const formData = new FormData();
+    const blob = new Blob([binaryAudio.buffer as ArrayBuffer], { type: actualMimeType });
+    formData.append("file", blob, `audio.${fileExtension}`);
+    formData.append("model", "whisper-1");
+    formData.append("language", "pt"); // Portuguese
+
+    // Send to OpenAI Whisper API
+    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Você é um transcritor de áudio preciso e literal.
-
-TAREFA: Transcreva EXATAMENTE o que foi dito no áudio em português brasileiro.
-
-REGRAS IMPORTANTES:
-- Transcreva palavra por palavra o que a pessoa disse
-- NÃO invente conteúdo que não foi dito
-- NÃO adicione comentários, explicações ou interpretações
-- NÃO gere frases motivacionais ou filosóficas
-- Retorne APENAS a transcrição literal do áudio
-- Se não conseguir entender claramente alguma palavra, escreva [inaudível]
-- Se o áudio estiver vazio ou silencioso, responda: "[ÁUDIO SILENCIOSO]"
-
-Transcreva o áudio agora:`
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${actualMimeType};base64,${audio}`
-                }
-              }
-            ]
-          }
-        ]
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("Transcription API error:", response.status, error);
+      const errorText = await response.text();
+      console.error("OpenAI Whisper API error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -80,23 +102,32 @@ Transcreva o áudio agora:`
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (response.status === 401) {
         return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Invalid OpenAI API key." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+      if (response.status === 402 || response.status === 400) {
+        // Check if it's a billing/quota issue
+        if (errorText.includes("quota") || errorText.includes("billing")) {
+          return new Response(
+            JSON.stringify({ error: "OpenAI quota exceeded. Please check your billing." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
       
-      throw new Error(`Transcription failed: ${response.status}`);
+      throw new Error(`Transcription failed: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    const transcript = result.choices?.[0]?.message?.content || "";
+    const transcript = result.text || "";
 
     console.log("Transcription result:", transcript);
 
-    // Check for failure cases
-    if (transcript.includes("[ÁUDIO SILENCIOSO]") || transcript.includes("[ÁUDIO INAUDÍVEL]")) {
+    // Check for empty transcription
+    if (!transcript.trim()) {
       return new Response(
         JSON.stringify({ error: "Não foi possível identificar o áudio. Tente gravar novamente." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
