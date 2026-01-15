@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.58877283113848d897708519ee813c84',
+  appId: 'com.cozinhaai',
   appName: 'cozinhai-receitas-inteligentes',
   webDir: 'dist',
   server: {
