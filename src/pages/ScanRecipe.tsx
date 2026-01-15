@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, Mic, Loader2, Check, X, Upload } from "lucide-react";
+import { ArrowLeft, Camera, Mic, Loader2, Check, X, Upload, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,10 +29,37 @@ export default function ScanRecipe() {
   const [isRecording, setIsRecording] = useState(false);
   const [parsedRecipe, setParsedRecipe] = useState<ParsedRecipe | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showAddIngredient, setShowAddIngredient] = useState(false);
+  const [newIngredient, setNewIngredient] = useState("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  
+  const parseIngredientString = (text: string): { name: string; quantity: string; unit: string } => {
+    const parts = text.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      // Tenta extrair: "2 xícaras farinha" ou "1 colher de sopa açúcar"
+      const quantity = parts[0];
+      const unit = parts[1];
+      const name = parts.slice(2).join(" ");
+      return { quantity, unit, name };
+    } else if (parts.length === 2) {
+      return { quantity: parts[0], unit: "", name: parts[1] };
+    }
+    return { quantity: "", unit: "", name: text.trim() };
+  };
+  
+  const handleAddIngredient = () => {
+    if (!parsedRecipe || !newIngredient.trim()) return;
+    const parsed = parseIngredientString(newIngredient);
+    setParsedRecipe({
+      ...parsedRecipe,
+      ingredients: [...parsedRecipe.ingredients, parsed]
+    });
+    setNewIngredient("");
+    setShowAddIngredient(false);
+  };
 
   const parseRecipeWithAPI = async (content: string, type: "image" | "text"): Promise<ParsedRecipe | null> => {
     try {
@@ -473,6 +500,40 @@ export default function ScanRecipe() {
                     </div>
                   ))}
                 </div>
+                
+                {/* Add ingredient */}
+                {showAddIngredient ? (
+                  <div className="mt-2 flex gap-2">
+                    <Input
+                      placeholder="Ex: 2 xícaras farinha"
+                      value={newIngredient}
+                      onChange={(e) => setNewIngredient(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddIngredient();
+                        if (e.key === 'Escape') {
+                          setShowAddIngredient(false);
+                          setNewIngredient("");
+                        }
+                      }}
+                      autoFocus
+                      className="flex-1"
+                    />
+                    <Button size="sm" onClick={handleAddIngredient} disabled={!newIngredient.trim()}>
+                      <Check className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowAddIngredient(false); setNewIngredient(""); }}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowAddIngredient(true)}
+                    className="mt-2 flex items-center gap-1 text-sm text-primary hover:underline"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Adicionar ingrediente
+                  </button>
+                )}
               </div>
 
               <div>

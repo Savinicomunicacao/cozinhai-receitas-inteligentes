@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bookmark, FolderOpen, Plus, Folder, MoreVertical, Edit2, Trash2, ScanLine } from "lucide-react";
+import { Bookmark, FolderOpen, Plus, Folder, MoreVertical, Edit2, Trash2, ScanLine, LayoutGrid, List, Clock, ChefHat } from "lucide-react";
 import { RecipeCard } from "@/components/RecipeCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,8 @@ interface RecipeFolder {
   recipeCount: number;
 }
 
+type ViewMode = "cards" | "list";
+
 export default function Saved() {
   const navigate = useNavigate();
   const { user, isPro } = useAuth();
@@ -49,6 +51,7 @@ export default function Saved() {
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<RecipeFolder | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
 
   useEffect(() => {
     if (user) {
@@ -293,14 +296,24 @@ export default function Saved() {
               {savedRecipes.length} receitas
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => navigate('/app/scan-recipe')}
-          >
-            <ScanLine className="w-4 h-4 mr-2" />
-            Escanear
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewMode(v => v === "cards" ? "list" : "cards")}
+              className="h-9 w-9"
+            >
+              {viewMode === "cards" ? <List className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate('/app/scan-recipe')}
+            >
+              <ScanLine className="w-4 h-4 mr-2" />
+              Escanear
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -420,50 +433,113 @@ export default function Saved() {
           </div>
         </div>
 
-        {/* Recipes grid */}
+        {/* Recipes grid/list */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-pulse text-muted-foreground">Carregando...</div>
           </div>
         ) : filteredRecipes.length > 0 ? (
-          <div className="grid gap-4">
-            {filteredRecipes.map((recipe) => (
-              <div key={recipe.id} className="relative">
-                <RecipeCard
-                  {...recipe}
-                  isSaved={true}
-                  onView={() => navigate(`/app/recipe/${recipe.id}`)}
-                  onSave={() => handleUnsave(recipe.id)}
-                />
-                {isPro && folders.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button className="absolute top-3 left-3 p-2 bg-background/80 backdrop-blur-sm rounded-full">
-                        <FolderOpen className="w-4 h-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {recipe.folderId && (
-                        <DropdownMenuItem onClick={() => handleMoveToFolder(recipe.id, null)}>
-                          Remover da pasta
-                        </DropdownMenuItem>
-                      )}
-                      {folders.map((folder) => (
-                        <DropdownMenuItem 
-                          key={folder.id}
-                          onClick={() => handleMoveToFolder(recipe.id, folder.id)}
-                          disabled={recipe.folderId === folder.id}
-                        >
-                          <Folder className="w-4 h-4 mr-2" />
-                          {folder.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            ))}
-          </div>
+          viewMode === "cards" ? (
+            <div className="grid gap-4">
+              {filteredRecipes.map((recipe) => (
+                <div key={recipe.id} className="relative">
+                  <RecipeCard
+                    {...recipe}
+                    isSaved={true}
+                    onView={() => navigate(`/app/recipe/${recipe.id}`)}
+                    onSave={() => handleUnsave(recipe.id)}
+                  />
+                  {isPro && folders.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="absolute top-3 left-3 p-2 bg-background/80 backdrop-blur-sm rounded-full">
+                          <FolderOpen className="w-4 h-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {recipe.folderId && (
+                          <DropdownMenuItem onClick={() => handleMoveToFolder(recipe.id, null)}>
+                            Remover da pasta
+                          </DropdownMenuItem>
+                        )}
+                        {folders.map((folder) => (
+                          <DropdownMenuItem 
+                            key={folder.id}
+                            onClick={() => handleMoveToFolder(recipe.id, folder.id)}
+                            disabled={recipe.folderId === folder.id}
+                          >
+                            <Folder className="w-4 h-4 mr-2" />
+                            {folder.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-card border border-border rounded-2xl divide-y divide-border overflow-hidden">
+              {filteredRecipes.map((recipe) => (
+                <div 
+                  key={recipe.id} 
+                  className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => navigate(`/app/recipe/${recipe.id}`)}
+                >
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {recipe.imageUrl ? (
+                      <img src={recipe.imageUrl} alt={recipe.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <ChefHat className="w-6 h-6 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{recipe.title}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {recipe.prepTime} min
+                      </span>
+                      <span>•</span>
+                      <span>{recipe.servings} porções</span>
+                    </div>
+                  </div>
+                  {isPro && folders.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <button className="p-2 hover:bg-muted rounded-full">
+                          <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {recipe.folderId && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMoveToFolder(recipe.id, null); }}>
+                            Remover da pasta
+                          </DropdownMenuItem>
+                        )}
+                        {folders.map((folder) => (
+                          <DropdownMenuItem 
+                            key={folder.id}
+                            onClick={(e) => { e.stopPropagation(); handleMoveToFolder(recipe.id, folder.id); }}
+                            disabled={recipe.folderId === folder.id}
+                          >
+                            <Folder className="w-4 h-4 mr-2" />
+                            {folder.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleUnsave(recipe.id); }}
+                    className="p-2 hover:bg-destructive/10 rounded-full"
+                  >
+                    <Bookmark className="w-4 h-4 fill-primary text-primary" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
