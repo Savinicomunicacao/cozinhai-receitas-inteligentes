@@ -1,6 +1,7 @@
-import { Clock, Users, ChefHat, Bookmark, BookmarkCheck } from "lucide-react";
+import { Clock, Users, Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AppLogo } from "./AppLogo";
 
 interface RecipeCardProps {
   id: string;
@@ -65,7 +66,7 @@ export function RecipeCard({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <ChefHat className="w-10 h-10 text-muted-foreground/30" />
+            <AppLogo size="md" className="opacity-30" />
           </div>
         )}
         

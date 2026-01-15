@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChefHat } from "lucide-react";
+import { AppLogo } from "@/components/AppLogo";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export default function Index() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center">
       <div className="animate-fade-in text-center">
         <div className="w-24 h-24 rounded-3xl gradient-hero flex items-center justify-center mx-auto mb-6 shadow-elevated animate-pulse-soft">
-          <ChefHat className="w-12 h-12 text-primary-foreground" />
+          <AppLogo size="lg" />
         </div>
         <h1 className="font-display font-bold text-3xl text-foreground mb-2">
           Cozinha.ai

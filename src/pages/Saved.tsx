@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bookmark, FolderOpen, Plus, Folder, MoreVertical, Edit2, Trash2, ScanLine, LayoutGrid, List, Clock, ChefHat } from "lucide-react";
+import { Bookmark, FolderOpen, Plus, Folder, MoreVertical, Edit2, Trash2, ScanLine, LayoutGrid, List, Clock } from "lucide-react";
+import { AppLogo } from "@/components/AppLogo";
 import { RecipeCard } from "@/components/RecipeCard";
 import { SponsoredCard } from "@/components/SponsoredCard";
 import { Button } from "@/components/ui/button";
@@ -501,7 +502,7 @@ export default function Saved() {
                     {recipe.imageUrl ? (
                       <img src={recipe.imageUrl} alt={recipe.title} className="w-full h-full object-cover" />
                     ) : (
-                      <ChefHat className="w-6 h-6 text-muted-foreground" />
+                      <AppLogo size="sm" className="opacity-50" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

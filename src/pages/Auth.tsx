@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChefHat, Mail, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Mail, Lock, User, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { AppLogo } from "@/components/AppLogo";
 
 type AuthMode = "login" | "signup";
 
@@ -81,7 +82,7 @@ export default function Auth() {
       {/* Header */}
       <header className="px-4 pt-12 pb-8 text-center">
         <div className="w-20 h-20 rounded-3xl gradient-hero flex items-center justify-center mx-auto mb-4 shadow-elevated">
-          <ChefHat className="w-10 h-10 text-primary-foreground" />
+          <AppLogo size="md" />
         </div>
         <h1 className="font-display font-bold text-3xl mb-2">Cozinha.ai</h1>
         <p className="text-muted-foreground">

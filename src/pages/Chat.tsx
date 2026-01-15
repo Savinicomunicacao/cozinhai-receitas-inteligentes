@@ -5,7 +5,8 @@ import { ChatMessage } from "@/components/ChatMessage";
 import { FilterChips } from "@/components/FilterChips";
 import { PaywallModal } from "@/components/PaywallModal";
 import { SponsoredCard } from "@/components/SponsoredCard";
-import { ChefHat, Loader2 } from "lucide-react";
+import { AppLogo } from "@/components/AppLogo";
+import { Loader2 } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
 import { useSponsoredContent } from "@/hooks/useSponsoredContent";
@@ -68,7 +69,7 @@ export default function Chat() {
         <div className="px-4 py-3">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl gradient-hero flex items-center justify-center">
-              <ChefHat className="w-5 h-5 text-primary-foreground" />
+              <AppLogo size="sm" />
             </div>
             <div>
               <h1 className="font-display font-semibold text-lg">Cozinha.ai</h1>
