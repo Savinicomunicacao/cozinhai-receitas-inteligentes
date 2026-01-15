@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import { Check, Trash2, Pencil, X } from "lucide-react";
+import { Check, Trash2, Pencil, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface ShoppingItemProps {
   id: string;
@@ -26,6 +27,7 @@ export function ShoppingItem({
   const [editName, setEditName] = useState(name);
   const [editQuantity, setEditQuantity] = useState(quantity || "");
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -165,11 +167,24 @@ export function ShoppingItem({
       )}
 
       <button
-        onClick={() => onRemove(id)}
-        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+        type="button"
+        onClick={async (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          if (isDeleting) return;
+          setIsDeleting(true);
+          try {
+            await onRemove(id);
+          } catch (error) {
+            toast.error("Erro ao remover item");
+            setIsDeleting(false);
+          }
+        }}
+        disabled={isDeleting}
+        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10 disabled:opacity-50"
         aria-label="Remover item"
       >
-        <Trash2 className="w-4 h-4" />
+        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
       </button>
     </div>
   );
