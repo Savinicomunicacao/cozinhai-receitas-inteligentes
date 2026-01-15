@@ -1,220 +1,197 @@
 import { useState } from "react";
-import { Plus, Package, AlertTriangle, Trash2 } from "lucide-react";
+import { ShoppingCart, Trash2, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { useShoppingList } from "@/hooks/useShoppingList";
+import { ShoppingItem } from "@/components/ShoppingItem";
+import { ShoppingListInput } from "@/components/ShoppingListInput";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
-
-interface PantryItem {
-  id: string;
-  name: string;
-  quantity?: number;
-  unit?: string;
-  expiresAt?: Date;
-  isEmpty: boolean;
-}
-
-// Sample items for demo
-const sampleItems: PantryItem[] = [
-  { id: "1", name: "Frango", quantity: 500, unit: "g", isEmpty: false },
-  { id: "2", name: "Arroz", quantity: 1, unit: "kg", isEmpty: false },
-  { id: "3", name: "Cebola", quantity: 3, unit: "un", isEmpty: false },
-  { id: "4", name: "Alho", isEmpty: false },
-  { id: "5", name: "Leite", quantity: 1, unit: "L", expiresAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), isEmpty: false },
-  { id: "6", name: "Ovos", quantity: 6, unit: "un", isEmpty: false },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Pantry() {
-  const [items, setItems] = useState<PantryItem[]>(sampleItems);
-  const [newItemName, setNewItemName] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const {
+    pendingItems,
+    purchasedItems,
+    isLoading,
+    isAddingFromChat,
+    addItem,
+    addItemsFromChat,
+    togglePurchased,
+    removeItem,
+    clearPurchased,
+  } = useShoppingList();
 
-  const handleAddItem = () => {
-    if (newItemName.trim()) {
-      const newItem: PantryItem = {
-        id: Date.now().toString(),
-        name: newItemName.trim(),
-        isEmpty: false,
-      };
-      setItems((prev) => [...prev, newItem]);
-      setNewItemName("");
-      setIsDialogOpen(false);
-    }
-  };
+  const [purchasedOpen, setPurchasedOpen] = useState(true);
 
-  const handleToggleEmpty = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, isEmpty: !item.isEmpty } : item
-      )
+  if (authLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background">
+        <div className="p-4 space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      </div>
     );
-  };
+  }
 
-  const handleRemove = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 text-center">
+        <ShoppingCart className="w-16 h-16 text-muted-foreground mb-4" />
+        <h2 className="text-xl font-semibold mb-2">Lista de Compras</h2>
+        <p className="text-muted-foreground mb-6">
+          Faça login para criar e gerenciar sua lista de compras inteligente.
+        </p>
+        <Button asChild>
+          <a href="/auth">Fazer Login</a>
+        </Button>
+      </div>
+    );
+  }
 
-  const isExpiringSoon = (date?: Date) => {
-    if (!date) return false;
-    const threeDays = 3 * 24 * 60 * 60 * 1000;
-    return date.getTime() - Date.now() < threeDays;
-  };
-
-  const activeItems = items.filter((item) => !item.isEmpty);
-  const emptyItems = items.filter((item) => item.isEmpty);
+  const totalItems = pendingItems.length + purchasedItems.length;
 
   return (
-    <div className="min-h-[calc(100vh-72px)] bg-background pb-24">
+    <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-display font-semibold text-xl">Minha Cozinha</h1>
-            <p className="text-sm text-muted-foreground">
-              {activeItems.length} itens disponíveis
-            </p>
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-border">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-primary" />
+              Lista de Compras
+            </h1>
+            <span className="text-sm text-muted-foreground">
+              {pendingItems.length} {pendingItems.length === 1 ? "item" : "itens"} pendente{pendingItems.length !== 1 && "s"}
+            </span>
           </div>
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="icon" className="rounded-full">
-                <Plus className="w-5 h-5" />
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="font-display">Adicionar item</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="item-name">Nome do item</Label>
-                  <Input
-                    id="item-name"
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    placeholder="Ex: Tomate, Queijo, Macarrão..."
-                    className="h-12"
-                    onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                  />
-                </div>
-                <Button onClick={handleAddItem} className="w-full">
-                  Adicionar
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
-      </header>
+      </div>
 
-      <main className="px-4 py-4 space-y-6">
-        {/* Expiring Soon Alert */}
-        {activeItems.some((item) => isExpiringSoon(item.expiresAt)) && (
-          <div className="flex items-start gap-3 p-4 bg-warning/10 border border-warning/20 rounded-2xl">
-            <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-sm text-foreground">Use primeiro</p>
-              <p className="text-sm text-muted-foreground">
-                Alguns itens vencem em breve
-              </p>
-            </div>
-          </div>
-        )}
+      {/* Input Section */}
+      <div className="p-4 border-b border-border bg-muted/30">
+        <ShoppingListInput
+          onAddItems={addItemsFromChat}
+          onAddSingleItem={addItem}
+          isProcessing={isAddingFromChat}
+        />
+      </div>
 
-        {/* Active Items */}
-        <section>
-          <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
-            Disponíveis
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {activeItems.map((item) => (
-              <div
-                key={item.id}
-                className={cn(
-                  "card-recipe p-4 relative group",
-                  isExpiringSoon(item.expiresAt) && "ring-2 ring-warning/30"
-                )}
-              >
-                <button
-                  onClick={() => handleRemove(item.id)}
-                  className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive/10 text-destructive opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-                
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <Package className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground truncate">
-                      {item.name}
-                    </p>
-                    {item.quantity && item.unit && (
-                      <p className="text-xs text-muted-foreground">
-                        {item.quantity} {item.unit}
-                      </p>
-                    )}
-                    {isExpiringSoon(item.expiresAt) && (
-                      <p className="text-xs text-warning font-medium mt-1">
-                        Vence em breve
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full mt-3 text-xs h-8"
-                  onClick={() => handleToggleEmpty(item.id)}
-                >
-                  Acabou
-                </Button>
-              </div>
+      {/* List Content */}
+      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-6">
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-xl" />
             ))}
           </div>
-        </section>
-
-        {/* Empty Items */}
-        {emptyItems.length > 0 && (
-          <section>
-            <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
-              Acabaram
-            </h2>
-            <div className="space-y-2">
-              {emptyItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 bg-muted/50 rounded-xl"
-                >
-                  <span className="text-sm text-muted-foreground line-through">
-                    {item.name}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs h-7"
-                      onClick={() => handleToggleEmpty(item.id)}
-                    >
-                      Repôs
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs h-7 text-destructive hover:text-destructive"
-                      onClick={() => handleRemove(item.id)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
+        ) : totalItems === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Package className="w-12 h-12 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground mb-2">
+              Lista vazia
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Use o campo acima para adicionar itens. Você pode digitar ou falar vários itens de uma vez!
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Pending Items */}
+            {pendingItems.length > 0 && (
+              <div className="space-y-2">
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide px-1">
+                  Pendentes
+                </h2>
+                <div className="space-y-2">
+                  {pendingItems.map((item) => (
+                    <ShoppingItem
+                      key={item.id}
+                      id={item.id}
+                      name={item.name}
+                      quantity={item.quantity}
+                      isPurchased={item.is_purchased}
+                      onToggle={togglePurchased}
+                      onRemove={removeItem}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
+              </div>
+            )}
+
+            {/* Purchased Items */}
+            {purchasedItems.length > 0 && (
+              <Collapsible open={purchasedOpen} onOpenChange={setPurchasedOpen}>
+                <div className="flex items-center justify-between px-1 mb-2">
+                  <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors">
+                    Comprados ({purchasedItems.length})
+                    {purchasedOpen ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </CollapsibleTrigger>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Limpar
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Limpar itens comprados?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Isso removerá permanentemente todos os {purchasedItems.length} itens marcados como comprados.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={clearPurchased}>
+                          Limpar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+
+                <CollapsibleContent className="space-y-2">
+                  {purchasedItems.map((item) => (
+                    <ShoppingItem
+                      key={item.id}
+                      id={item.id}
+                      name={item.name}
+                      quantity={item.quantity}
+                      isPurchased={item.is_purchased}
+                      onToggle={togglePurchased}
+                      onRemove={removeItem}
+                    />
+                  ))}
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </>
         )}
-      </main>
+      </div>
     </div>
   );
 }
