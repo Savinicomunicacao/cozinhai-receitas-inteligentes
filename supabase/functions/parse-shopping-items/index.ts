@@ -8,29 +8,45 @@ const corsHeaders = {
 const SYSTEM_PROMPT = `Você é um assistente que extrai itens de uma lista de compras a partir de mensagens em linguagem natural.
 
 TAREFA:
-Extraia TODOS os itens mencionados pelo usuário e retorne em formato JSON.
+Extraia TODOS os itens mencionados pelo usuário e retorne em formato JSON, incluindo a categoria de cada item.
 
 FORMATO DE RESPOSTA OBRIGATÓRIO (apenas JSON, sem texto adicional):
 {
   "items": [
-    {"name": "Nome do Item", "quantity": "quantidade ou null"},
-    {"name": "Outro Item", "quantity": null}
+    {"name": "Nome do Item", "quantity": "quantidade ou null", "category": "Categoria"},
+    {"name": "Outro Item", "quantity": null, "category": "Categoria"}
   ]
 }
 
+CATEGORIAS DISPONÍVEIS (use exatamente estes nomes):
+- Bebidas (refrigerantes, sucos, água, cerveja, vinho, etc.)
+- Frutas (banana, maçã, laranja, uva, etc.)
+- Verduras e Legumes (alface, tomate, cenoura, batata, etc.)
+- Carnes (frango, carne bovina, peixe, linguiça, etc.)
+- Laticínios (leite, queijo, iogurte, manteiga, etc.)
+- Grãos e Cereais (arroz, feijão, macarrão, aveia, etc.)
+- Limpeza (detergente, sabão, desinfetante, etc.)
+- Higiene Pessoal (shampoo, sabonete, pasta de dente, etc.)
+- Padaria (pão, bolo, biscoito, etc.)
+- Frios (presunto, mortadela, peito de peru, etc.)
+- Congelados (pizza, lasanha, sorvete, etc.)
+- Temperos (sal, açúcar, pimenta, alho, etc.)
+- Outros (itens que não se encaixam em nenhuma categoria acima)
+
 REGRAS:
 1. Capitalize a primeira letra de cada item
-2. Se tiver quantidade, extraia (ex: "2 litros de leite" -> {"name": "Leite", "quantity": "2 litros"})
+2. Se tiver quantidade, extraia (ex: "2 litros de leite" -> {"name": "Leite", "quantity": "2 litros", "category": "Laticínios"})
 3. Se não tiver quantidade, use null
 4. Remova palavras como "comprar", "adicionar", "preciso de", "quero"
 5. Separe itens compostos (ex: "arroz e feijão" -> 2 itens separados)
 6. Normalize nomes (ex: "bananas" -> "Banana", "ovos" -> "Ovos")
 7. Agrupe quantidades com unidades: kg, g, litros, ml, unidades, pacotes, latas, etc.
+8. SEMPRE inclua a categoria mais apropriada para cada item
 
 EXEMPLOS:
-- "banana, leite e pão" -> [{"name": "Banana", "quantity": null}, {"name": "Leite", "quantity": null}, {"name": "Pão", "quantity": null}]
-- "2kg de arroz, 1 litro de óleo" -> [{"name": "Arroz", "quantity": "2kg"}, {"name": "Óleo", "quantity": "1 litro"}]
-- "preciso comprar ovos, queijo e presunto fatiado" -> [{"name": "Ovos", "quantity": null}, {"name": "Queijo", "quantity": null}, {"name": "Presunto fatiado", "quantity": null}]`;
+- "coca-cola, guaraná e sprite" -> [{"name": "Coca-Cola", "quantity": null, "category": "Bebidas"}, {"name": "Guaraná", "quantity": null, "category": "Bebidas"}, {"name": "Sprite", "quantity": null, "category": "Bebidas"}]
+- "2kg de arroz, 1 litro de óleo" -> [{"name": "Arroz", "quantity": "2kg", "category": "Grãos e Cereais"}, {"name": "Óleo", "quantity": "1 litro", "category": "Temperos"}]
+- "preciso comprar ovos, queijo e presunto fatiado" -> [{"name": "Ovos", "quantity": null, "category": "Laticínios"}, {"name": "Queijo", "quantity": null, "category": "Laticínios"}, {"name": "Presunto fatiado", "quantity": null, "category": "Frios"}]`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -86,6 +102,7 @@ serve(async (req) => {
     interface ParsedItem {
       name: string;
       quantity: string | null;
+      category: string | null;
     }
     
     let parsedItems: { items: ParsedItem[] } = { items: [] };
@@ -94,11 +111,16 @@ serve(async (req) => {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsedItems = JSON.parse(jsonMatch[0]);
+        // Ensure each item has a category
+        parsedItems.items = parsedItems.items.map(item => ({
+          ...item,
+          category: item.category || "Outros"
+        }));
       }
     } catch (parseError) {
       console.error("Failed to parse AI response:", parseError);
       // Fallback: treat the message as a single item
-      parsedItems = { items: [{ name: message.trim(), quantity: null }] };
+      parsedItems = { items: [{ name: message.trim(), quantity: null, category: "Outros" }] };
     }
 
     console.log("Parsed items:", parsedItems);

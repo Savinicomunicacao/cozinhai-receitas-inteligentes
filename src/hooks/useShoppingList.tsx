@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
@@ -7,9 +7,15 @@ export interface ShoppingItem {
   id: string;
   name: string;
   quantity: string | null;
+  category: string | null;
   is_purchased: boolean;
   created_at: string;
   purchased_at: string | null;
+}
+
+export interface CategoryGroup {
+  category: string;
+  items: ShoppingItem[];
 }
 
 export function useShoppingList() {
@@ -110,7 +116,7 @@ export function useShoppingList() {
       if (response.error) throw response.error;
 
       const { items: parsedItems } = response.data as {
-        items: Array<{ name: string; quantity: string | null }>;
+        items: Array<{ name: string; quantity: string | null; category: string | null }>;
       };
 
       if (!parsedItems || parsedItems.length === 0) {
@@ -118,11 +124,12 @@ export function useShoppingList() {
         return 0;
       }
 
-      // Insert all items
+      // Insert all items with category
       const itemsToInsert = parsedItems.map((item) => ({
         user_id: user.id,
         name: item.name,
         quantity: item.quantity,
+        category: item.category || null,
       }));
 
       const { error } = await supabase
@@ -142,6 +149,25 @@ export function useShoppingList() {
       return 0;
     } finally {
       setIsAddingFromChat(false);
+    }
+  };
+
+  const updateItem = async (id: string, name: string, quantity: string | null) => {
+    try {
+      const { error } = await supabase
+        .from("shopping_list_items")
+        .update({
+          name: name.trim(),
+          quantity: quantity?.trim() || null,
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Item atualizado!");
+    } catch (error) {
+      console.error("Error updating item:", error);
+      toast.error("Erro ao atualizar item");
+      throw error;
     }
   };
 
@@ -202,14 +228,46 @@ export function useShoppingList() {
   const pendingItems = items.filter((item) => !item.is_purchased);
   const purchasedItems = items.filter((item) => item.is_purchased);
 
+  // Group items by category (only categories with 2+ items)
+  const categorizedItems = useMemo(() => {
+    const groups: Record<string, ShoppingItem[]> = {};
+
+    pendingItems.forEach((item) => {
+      const cat = item.category || "Outros";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(item);
+    });
+
+    // Only return categories with 2+ items
+    return Object.entries(groups)
+      .filter(([_, catItems]) => catItems.length >= 2)
+      .map(([category, catItems]) => ({ category, items: catItems }))
+      .sort((a, b) => a.category.localeCompare(b.category));
+  }, [pendingItems]);
+
+  // Items that don't belong to any category with 2+ items
+  const uncategorizedItems = useMemo(() => {
+    const categoriesWithMultiple = new Set(
+      categorizedItems.map((g) => g.category)
+    );
+
+    return pendingItems.filter((item) => {
+      const cat = item.category || "Outros";
+      return !categoriesWithMultiple.has(cat);
+    });
+  }, [pendingItems, categorizedItems]);
+
   return {
     items,
     pendingItems,
     purchasedItems,
+    categorizedItems,
+    uncategorizedItems,
     isLoading,
     isAddingFromChat,
     addItem,
     addItemsFromChat,
+    updateItem,
     togglePurchased,
     removeItem,
     clearPurchased,
