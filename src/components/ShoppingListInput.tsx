@@ -66,9 +66,14 @@ export function ShoppingListInput({
 
       if (error) throw error;
 
-      if (data?.text) {
+      if (data?.transcript) {
         // Automatically add items from transcription
-        await onAddItems(data.text);
+        await onAddItems(data.transcript);
+        toast.success("Itens adicionados por voz!");
+      } else if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.error("Não foi possível transcrever o áudio");
       }
     } catch (error) {
       console.error("Transcription error:", error);
