@@ -13,9 +13,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { SponsoredCard } from "@/components/SponsoredCard";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useSponsoredContent } from "@/hooks/useSponsoredContent";
 
 interface MenuItem {
   icon: React.ElementType;
@@ -29,6 +31,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const { profile, signOut, loading } = useAuth();
   const { isAdmin } = useAdmin();
+  const { content: sponsoredContent } = useSponsoredContent("profile");
   
   const usageCount = profile?.weekly_usage_count ?? 0;
   const maxUsage = 7;
@@ -102,6 +105,11 @@ export default function Profile() {
       </header>
 
       <main className="px-4 py-4 space-y-6">
+        {/* Sponsored content for non-Pro users */}
+        {!isPro && sponsoredContent && (
+          <SponsoredCard content={sponsoredContent} variant="banner" />
+        )}
+
         {/* Usage Card - Only show for free users */}
         {!isPro && (
           <div className="card-recipe p-4">

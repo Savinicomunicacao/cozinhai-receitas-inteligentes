@@ -1,13 +1,14 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatInput } from "@/components/ChatInput";
 import { ChatMessage } from "@/components/ChatMessage";
 import { FilterChips } from "@/components/FilterChips";
 import { PaywallModal } from "@/components/PaywallModal";
+import { SponsoredCard } from "@/components/SponsoredCard";
 import { ChefHat, Loader2 } from "lucide-react";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
-import { useState } from "react";
+import { useSponsoredContent } from "@/hooks/useSponsoredContent";
 
 const availableFilters = [
   "Rápida",
@@ -25,6 +26,7 @@ export default function Chat() {
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [showPaywall, setShowPaywall] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { content: sponsoredContent } = useSponsoredContent("chat");
 
   const isPro = profile?.is_pro ?? false;
   const weeklyUsage = profile?.weekly_usage_count ?? 0;
@@ -103,6 +105,11 @@ export default function Chat() {
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm">Pensando em receitas...</span>
           </div>
+        )}
+
+        {/* Sponsored content for non-Pro users */}
+        {!isPro && sponsoredContent && messages.length >= 3 && (
+          <SponsoredCard content={sponsoredContent} />
         )}
         
         <div ref={messagesEndRef} />

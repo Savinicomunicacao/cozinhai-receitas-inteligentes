@@ -226,6 +226,60 @@ export type Database = {
           },
         ]
       }
+      sponsored_content: {
+        Row: {
+          clicks: number
+          created_at: string
+          cta_text: string
+          cta_url: string
+          description: string | null
+          end_date: string | null
+          id: string
+          image_url: string | null
+          impressions: number
+          is_active: boolean
+          placement: string
+          priority: number
+          sponsor_name: string
+          start_date: string | null
+          title: string
+        }
+        Insert: {
+          clicks?: number
+          created_at?: string
+          cta_text: string
+          cta_url: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          impressions?: number
+          is_active?: boolean
+          placement: string
+          priority?: number
+          sponsor_name: string
+          start_date?: string | null
+          title: string
+        }
+        Update: {
+          clicks?: number
+          created_at?: string
+          cta_text?: string
+          cta_url?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          image_url?: string | null
+          impressions?: number
+          is_active?: boolean
+          placement?: string
+          priority?: number
+          sponsor_name?: string
+          start_date?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -258,6 +312,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_sponsored_clicks: {
+        Args: { content_id: string }
+        Returns: undefined
+      }
+      increment_sponsored_impressions: {
+        Args: { content_id: string }
+        Returns: undefined
       }
     }
     Enums: {
