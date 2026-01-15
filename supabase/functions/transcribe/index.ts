@@ -19,27 +19,16 @@ serve(async (req) => {
       throw new Error("No audio data provided");
     }
 
-    console.log("Processing audio transcription, mimeType:", mimeType);
+    const actualMimeType = mimeType || "audio/webm";
+    console.log("Processing audio transcription, mimeType:", actualMimeType);
+    console.log("Audio base64 length:", audio.length);
 
-    // Decode base64 audio
-    const binaryString = atob(audio);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    console.log("Audio size:", bytes.length, "bytes");
-
-    // Use Lovable AI Gateway for transcription via chat completions with audio
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    // Convert audio to base64 data URL format for the API
-    const audioDataUrl = `data:${mimeType || "audio/webm"};base64,${audio}`;
-
-    // Use Gemini model to transcribe audio
+    // Use Gemini model with correct inline_data format for audio
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -50,21 +39,29 @@ serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages: [
           {
-            role: "system",
-            content: "Você é um assistente de transcrição de áudio. Transcreva o áudio fornecido para texto em português brasileiro. Retorne APENAS a transcrição, sem comentários adicionais."
-          },
-          {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Por favor, transcreva este áudio para texto:"
+                text: `Você é um transcritor de áudio preciso e literal.
+
+TAREFA: Transcreva EXATAMENTE o que foi dito no áudio em português brasileiro.
+
+REGRAS IMPORTANTES:
+- Transcreva palavra por palavra o que a pessoa disse
+- NÃO invente conteúdo que não foi dito
+- NÃO adicione comentários, explicações ou interpretações
+- NÃO gere frases motivacionais ou filosóficas
+- Retorne APENAS a transcrição literal do áudio
+- Se não conseguir entender claramente alguma palavra, escreva [inaudível]
+- Se o áudio estiver vazio ou silencioso, responda: "[ÁUDIO SILENCIOSO]"
+
+Transcreva o áudio agora:`
               },
               {
-                type: "input_audio",
-                input_audio: {
-                  data: audio,
-                  format: mimeType?.includes("mp4") ? "mp4" : "webm"
+                type: "image_url",
+                image_url: {
+                  url: `data:${actualMimeType};base64,${audio}`
                 }
               }
             ]
@@ -75,7 +72,21 @@ serve(async (req) => {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("Transcription error:", error);
+      console.error("Transcription API error:", response.status, error);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Payment required. Please add credits." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       throw new Error(`Transcription failed: ${response.status}`);
     }
 
@@ -84,14 +95,22 @@ serve(async (req) => {
 
     console.log("Transcription result:", transcript);
 
+    // Check for failure cases
+    if (transcript.includes("[ÁUDIO SILENCIOSO]") || transcript.includes("[ÁUDIO INAUDÍVEL]")) {
+      return new Response(
+        JSON.stringify({ error: "Não foi possível identificar o áudio. Tente gravar novamente." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ transcript }),
+      JSON.stringify({ transcript: transcript.trim() }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (error: unknown) {
-    console.error("Error:", error);
+    console.error("Transcription error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ error: errorMessage }),
