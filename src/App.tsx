@@ -18,6 +18,7 @@ import Cook from "./pages/Cook";
 import History from "./pages/History";
 import ScanRecipe from "./pages/ScanRecipe";
 import Paywall from "./pages/Paywall";
+import Landing from "./pages/Landing";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
@@ -102,6 +103,7 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<Index />} />
+      <Route path="/landing" element={<Landing />} />
       <Route path="/auth" element={<AuthRoute />} />
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/paywall" element={<Paywall />} />
