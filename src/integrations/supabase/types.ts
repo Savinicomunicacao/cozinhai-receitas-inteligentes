@@ -226,6 +226,36 @@ export type Database = {
           },
         ]
       }
+      shopping_list_items: {
+        Row: {
+          created_at: string
+          id: string
+          is_purchased: boolean
+          name: string
+          purchased_at: string | null
+          quantity: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_purchased?: boolean
+          name: string
+          purchased_at?: string | null
+          quantity?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_purchased?: boolean
+          name?: string
+          purchased_at?: string | null
+          quantity?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sponsored_content: {
         Row: {
           clicks: number

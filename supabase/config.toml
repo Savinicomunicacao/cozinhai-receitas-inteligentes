@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.parse-recipe]
 verify_jwt = false
+
+[functions.parse-shopping-items]
+verify_jwt = false
