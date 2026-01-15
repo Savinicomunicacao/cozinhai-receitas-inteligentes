@@ -68,8 +68,8 @@ export default function Chat() {
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="px-4 py-3">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl gradient-hero flex items-center justify-center">
-              <AppLogo size="sm" />
+            <div className="w-10 h-10 flex items-center justify-center">
+              <AppLogo size="md" />
             </div>
             <div>
               <h1 className="font-display font-semibold text-lg">Cozinha.ai</h1>
