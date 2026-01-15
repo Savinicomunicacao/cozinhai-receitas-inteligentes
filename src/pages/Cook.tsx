@@ -142,7 +142,7 @@ export default function Cook() {
   const handleNext = () => {
     if (!isLastStep) {
       setCurrentStep((prev) => prev + 1);
-    } else if (completedSteps.size === steps.length) {
+    } else {
       setShowComplete(true);
     }
   };
@@ -448,7 +448,6 @@ export default function Cook() {
             variant="hero"
             size="lg"
             onClick={handleNext}
-            disabled={isLastStep && completedSteps.size < steps.length}
             className="flex-1"
           >
             {isLastStep ? "Finalizar" : "Próximo"}
