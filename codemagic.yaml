@@ -11,7 +11,7 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: app.lovable.58877283113848d897708519ee813c84
+        bundle_identifier: com.cozinhaai
       node: 20
       xcode: latest
       cocoapods: default
@@ -83,7 +83,7 @@ workflows:
       java: 17
       node: 20
       vars:
-        PACKAGE_NAME: "app.lovable.58877283113848d897708519ee813c84"
+        PACKAGE_NAME: "com.cozinhaai"
     triggering:
       events:
         - push
