@@ -25,6 +25,7 @@ export default function Cook() {
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [timerInitialSeconds, setTimerInitialSeconds] = useState(0);
+  const [showTimerOverlay, setShowTimerOverlay] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -72,6 +73,7 @@ export default function Cook() {
         setTimerSeconds(prev => {
           if (prev <= 1) {
             setIsTimerRunning(false);
+            setShowTimerOverlay(false);
             // Play notification sound or vibrate
             if ('vibrate' in navigator) {
               navigator.vibrate([200, 100, 200, 100, 200]);
@@ -99,6 +101,7 @@ export default function Cook() {
     setTimerSeconds(seconds);
     setTimerInitialSeconds(seconds);
     setIsTimerRunning(true);
+    setShowTimerOverlay(true);
     toast.success(`Timer iniciado: ${formatTime(seconds)}`);
   };
 
@@ -110,6 +113,7 @@ export default function Cook() {
     setIsTimerRunning(false);
     setTimerSeconds(0);
     setTimerInitialSeconds(0);
+    setShowTimerOverlay(false);
   };
 
   const steps = recipe?.steps || [];
@@ -117,6 +121,11 @@ export default function Cook() {
   const isFirstStep = currentStep === 0;
   const isStepComplete = completedSteps.has(currentStep);
   const currentStepTime = steps[currentStep] ? detectTimeInStep(steps[currentStep]) : null;
+
+  // Calculate progress percentage
+  const timerProgress = timerInitialSeconds > 0 
+    ? ((timerInitialSeconds - timerSeconds) / timerInitialSeconds) * 100 
+    : 0;
 
   const handleToggleStep = () => {
     setCompletedSteps((prev) => {
@@ -188,6 +197,94 @@ export default function Cook() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Timer Fullscreen Overlay */}
+      {showTimerOverlay && timerSeconds > 0 && (
+        <div className="fixed inset-0 z-50 bg-background/98 backdrop-blur-sm flex flex-col items-center justify-center px-6">
+          {/* Close button */}
+          <button
+            onClick={() => setShowTimerOverlay(false)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-muted flex items-center justify-center"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          
+          {/* Circular progress */}
+          <div className="relative w-64 h-64 mb-8">
+            {/* Background circle */}
+            <svg className="w-full h-full transform -rotate-90">
+              <circle
+                cx="128"
+                cy="128"
+                r="120"
+                fill="none"
+                stroke="hsl(var(--muted))"
+                strokeWidth="8"
+              />
+              <circle
+                cx="128"
+                cy="128"
+                r="120"
+                fill="none"
+                stroke="hsl(var(--primary))"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 120}
+                strokeDashoffset={2 * Math.PI * 120 * (1 - timerProgress / 100)}
+                className="transition-all duration-1000 ease-linear"
+              />
+            </svg>
+            
+            {/* Timer display */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <Timer className="w-8 h-8 text-primary mb-2" />
+              <span className="font-mono font-bold text-6xl md:text-7xl text-foreground">
+                {formatTime(timerSeconds)}
+              </span>
+              <span className="text-sm text-muted-foreground mt-2">
+                {isTimerRunning ? "em andamento" : "pausado"}
+              </span>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex gap-4">
+            <Button
+              size="lg"
+              variant={isTimerRunning ? "outline" : "default"}
+              onClick={toggleTimer}
+              className="min-w-32 h-14 text-lg"
+            >
+              {isTimerRunning ? (
+                <>
+                  <Pause className="w-5 h-5 mr-2" />
+                  Pausar
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5 mr-2" />
+                  Continuar
+                </>
+              )}
+            </Button>
+            <Button
+              size="lg"
+              variant="destructive"
+              onClick={resetTimer}
+              className="min-w-32 h-14 text-lg"
+            >
+              <X className="w-5 h-5 mr-2" />
+              Cancelar
+            </Button>
+          </div>
+
+          {/* Current step reminder */}
+          <div className="mt-8 max-w-md text-center">
+            <p className="text-sm text-muted-foreground mb-1">Passo {currentStep + 1}</p>
+            <p className="text-sm text-foreground/80 line-clamp-2">{steps[currentStep]}</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="px-4 py-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
@@ -203,10 +300,10 @@ export default function Cook() {
           {/* Timer display/button */}
           {timerSeconds > 0 ? (
             <button 
-              onClick={toggleTimer}
+              onClick={() => setShowTimerOverlay(true)}
               className={cn(
                 "px-3 py-2 rounded-full flex items-center gap-2 font-mono text-sm font-medium transition-colors",
-                isTimerRunning ? "bg-primary text-primary-foreground" : "bg-muted"
+                isTimerRunning ? "bg-primary text-primary-foreground animate-pulse" : "bg-muted"
               )}
             >
               {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
@@ -245,28 +342,35 @@ export default function Cook() {
         </div>
       </header>
 
-      {/* Timer bar when active */}
-      {timerSeconds > 0 && (
-        <div className="px-4 py-2 bg-card border-b border-border">
+      {/* Timer bar when active (minimized) */}
+      {timerSeconds > 0 && !showTimerOverlay && (
+        <button 
+          onClick={() => setShowTimerOverlay(true)}
+          className="px-4 py-3 bg-primary/5 border-b border-border hover:bg-primary/10 transition-colors"
+        >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Timer className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">Timer ativo</span>
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center",
+                isTimerRunning ? "bg-primary text-primary-foreground" : "bg-muted"
+              )}>
+                {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              </div>
+              <div>
+                <span className="font-mono font-bold text-lg">{formatTime(timerSeconds)}</span>
+                <span className="text-xs text-muted-foreground ml-2">
+                  Toque para expandir
+                </span>
+              </div>
             </div>
-            <button 
-              onClick={resetTimer}
-              className="p-1 hover:bg-muted rounded-full"
-            >
-              <X className="w-4 h-4 text-muted-foreground" />
-            </button>
           </div>
-          <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
+          <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
             <div 
               className="h-full bg-primary transition-all duration-1000"
-              style={{ width: `${(timerSeconds / timerInitialSeconds) * 100}%` }}
+              style={{ width: `${timerProgress}%` }}
             />
           </div>
-        </div>
+        </button>
       )}
 
       {/* Content */}
