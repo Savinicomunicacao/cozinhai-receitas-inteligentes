@@ -6,11 +6,11 @@ interface AppLogoProps {
 }
 
 const sizeClasses = {
-  xs: "w-14 h-14",
+  xs: "w-12 h-12",
   sm: "w-16 h-16", 
   md: "w-24 h-24",
   lg: "w-32 h-32",
-  xl: "w-48 h-48",
+  xl: "w-40 h-40",
 };
 
 export function AppLogo({ size = "md", className }: AppLogoProps) {
