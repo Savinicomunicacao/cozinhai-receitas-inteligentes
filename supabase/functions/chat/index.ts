@@ -28,6 +28,7 @@ Quando o usuário mencionar ingredientes, responda SEMPRE neste formato JSON exa
       "servings": 4,
       "difficulty": "facil",
       "tags": ["Rápida", "Econômica"],
+      "calories": 450,
       "shortReason": "Usa todos os seus ingredientes: X, Y e Z",
       "ingredients": [
         {"name": "Ingrediente 1", "qty": "500", "unit": "g", "fromUser": true},
@@ -53,6 +54,7 @@ REGRAS IMPORTANTES:
 7. shortReason DEVE mencionar os ingredientes do usuário
 8. steps devem ser detalhados e claros (5-10 passos)
 9. ingredients devem ter quantidades realistas
+10. calories: SEMPRE inclua uma estimativa de calorias por porção (número inteiro em kcal)
 
 Se o usuário fizer uma pergunta geral (não sobre receitas), responda normalmente sem JSON.
 

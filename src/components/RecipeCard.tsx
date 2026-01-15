@@ -1,4 +1,4 @@
-import { Clock, Users, Bookmark, BookmarkCheck } from "lucide-react";
+import { Clock, Users, Bookmark, BookmarkCheck, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AppLogo } from "./AppLogo";
@@ -12,6 +12,7 @@ interface RecipeCardProps {
   difficulty: "facil" | "medio" | "dificil";
   tags: string[];
   shortReason?: string;
+  calories?: number;
   isSaved?: boolean;
   onView?: () => void;
   onSave?: () => void;
@@ -38,6 +39,7 @@ export function RecipeCard({
   difficulty,
   tags,
   shortReason,
+  calories,
   isSaved = false,
   onView,
   onSave,
@@ -102,7 +104,7 @@ export function RecipeCard({
 
         {/* Meta info */}
         <div className={cn(
-          "flex items-center gap-3 text-muted-foreground",
+          "flex items-center gap-3 text-muted-foreground flex-wrap",
           compact ? "text-xs mt-1" : "text-sm mb-3"
         )}>
           <span className="flex items-center gap-1">
@@ -113,6 +115,12 @@ export function RecipeCard({
             <Users className="w-3.5 h-3.5" />
             {servings}
           </span>
+          {calories && (
+            <span className="flex items-center gap-1 text-accent">
+              <Flame className="w-3.5 h-3.5" />
+              {calories} kcal
+            </span>
+          )}
           <span className={cn(
             "px-2 py-0.5 rounded-full text-xs font-medium",
             difficultyColors[difficulty]

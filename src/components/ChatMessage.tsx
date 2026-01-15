@@ -12,6 +12,7 @@ interface Recipe {
   difficulty: "facil" | "medio" | "dificil";
   tags: string[];
   shortReason?: string;
+  calories?: number;
 }
 
 interface ChatMessageProps {
