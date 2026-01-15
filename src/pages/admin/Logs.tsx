@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, RefreshCw, Users, MessageSquare, Bookmark, ChefHat } from 'lucide-react';
+import { FileText, RefreshCw, Users, MessageSquare, Bookmark, UtensilsCrossed } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -91,7 +91,7 @@ export default function AdminLogs() {
     { 
       label: 'Receitas Geradas', 
       value: stats.totalRecipes, 
-      icon: ChefHat, 
+      icon: UtensilsCrossed, 
       color: 'text-orange-500',
       bgColor: 'bg-orange-100'
     },

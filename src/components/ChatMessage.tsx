@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { RecipeCard } from "./RecipeCard";
-import { ChefHat, Image } from "lucide-react";
+import { Image } from "lucide-react";
+import { AppLogo } from "./AppLogo";
 
 interface Recipe {
   id: string;
@@ -49,7 +50,7 @@ export function ChatMessage({
       {/* Avatar */}
       {!isUser && (
         <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-          <ChefHat className="w-5 h-5 text-primary" />
+          <AppLogo size="sm" />
         </div>
       )}
 
