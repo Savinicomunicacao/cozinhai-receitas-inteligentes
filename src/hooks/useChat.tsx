@@ -21,6 +21,7 @@ interface Recipe {
   shortReason?: string;
   ingredients?: Ingredient[];
   steps?: string[];
+  calories?: number;
 }
 
 interface Message {
