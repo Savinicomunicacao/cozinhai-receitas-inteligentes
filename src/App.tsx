@@ -18,6 +18,7 @@ import Cook from "./pages/Cook";
 import History from "./pages/History";
 import ScanRecipe from "./pages/ScanRecipe";
 import Paywall from "./pages/Paywall";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 // Layouts
@@ -118,6 +119,9 @@ function AppRoutes() {
       <Route path="/app/cook/:id" element={<ProtectedRoute><Cook /></ProtectedRoute>} />
       <Route path="/app/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
       <Route path="/app/scan-recipe" element={<ProtectedRoute><ScanRecipe /></ProtectedRoute>} />
+      
+      {/* Admin route */}
+      <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
 
       {/* Catch-all */}
       <Route path="*" element={<NotFound />} />

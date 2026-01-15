@@ -8,12 +8,14 @@ import {
   ChevronRight,
   Zap,
   LogOut,
-  MessageSquare
+  MessageSquare,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 
 interface MenuItem {
   icon: React.ElementType;
@@ -26,6 +28,7 @@ interface MenuItem {
 export default function Profile() {
   const navigate = useNavigate();
   const { profile, signOut, loading } = useAuth();
+  const { isAdmin } = useAdmin();
   
   const usageCount = profile?.weekly_usage_count ?? 0;
   const maxUsage = 7;
@@ -160,6 +163,25 @@ export default function Profile() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Admin Link - Only show for admins */}
+        {isAdmin && (
+          <button
+            onClick={() => navigate("/admin")}
+            className="w-full flex items-center gap-4 p-4 rounded-2xl transition-colors text-left bg-primary/10 hover:bg-primary/20 border border-primary/20"
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-primary text-primary-foreground">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">Painel Admin</p>
+              <p className="text-xs text-muted-foreground">
+                Gerenciar usuários e sistema
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-primary" />
+          </button>
         )}
 
         {/* Menu Items */}
