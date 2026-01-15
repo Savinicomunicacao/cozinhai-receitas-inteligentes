@@ -1,0 +1,133 @@
+workflows:
+  # ============================================
+  # iOS Build Workflow
+  # ============================================
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Codemagic # Nome da integração que você criar no CodeMagic
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.lovable.58877283113848d897708519ee813c84
+      node: 20
+      xcode: latest
+      cocoapods: default
+      vars:
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm install
+
+      - name: Build web project
+        script: |
+          npm run build
+
+      - name: Add iOS platform (if not exists)
+        script: |
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+
+      - name: Sync Capacitor iOS
+        script: |
+          npx cap sync ios
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios/App && pod install
+
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
+
+  # ============================================
+  # Android Build Workflow
+  # ============================================
+  android-workflow:
+    name: Android Build
+    max_build_duration: 120
+    instance_type: linux_x2
+    environment:
+      android_signing:
+        - cozinhai_keystore # Nome do keystore que você criar no CodeMagic
+      java: 17
+      node: 20
+      vars:
+        PACKAGE_NAME: "app.lovable.58877283113848d897708519ee813c84"
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm install
+
+      - name: Build web project
+        script: |
+          npm run build
+
+      - name: Add Android platform (if not exists)
+        script: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+
+      - name: Set Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+
+      - name: Sync Capacitor Android
+        script: |
+          npx cap sync android
+
+      - name: Build Android Release (AAB for Play Store)
+        script: |
+          cd android && ./gradlew bundleRelease
+
+      - name: Build Android Release (APK for testing)
+        script: |
+          cd android && ./gradlew assembleRelease
+
+    artifacts:
+      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/**/*.apk
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
