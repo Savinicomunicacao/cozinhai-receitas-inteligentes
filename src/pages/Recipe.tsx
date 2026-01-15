@@ -376,7 +376,7 @@ export default function Recipe() {
       )}
 
       {/* Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t border-border safe-area-bottom">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t border-border safe-area-bottom z-50">
         <div className="flex gap-3 max-w-md mx-auto">
           <Button
             variant="outline"
