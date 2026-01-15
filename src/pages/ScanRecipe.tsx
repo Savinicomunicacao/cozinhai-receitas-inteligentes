@@ -25,6 +25,7 @@ export default function ScanRecipe() {
   const { user, isPro } = useAuth();
   const [mode, setMode] = useState<"photo" | "audio" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState<string>("");
   const [isRecording, setIsRecording] = useState(false);
   const [parsedRecipe, setParsedRecipe] = useState<ParsedRecipe | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -33,134 +34,38 @@ export default function ScanRecipe() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  const parseRecipeWithAI = async (content: string, type: "image" | "text"): Promise<ParsedRecipe | null> => {
+  const parseRecipeWithAPI = async (content: string, type: "image" | "text"): Promise<ParsedRecipe | null> => {
     try {
-      const imagePrompt = `Você é um especialista em OCR (reconhecimento óptico de caracteres) e extração de receitas culinárias.
-
-TAREFA CRÍTICA: Extraia TODO o texto visível desta imagem PRIMEIRO, depois estruture como receita.
-
-ETAPA 1 - EXTRAÇÃO DE TEXTO (OCR):
-- Leia CADA palavra, número e símbolo visível na imagem
-- Inclua texto impresso, manuscrito, digital ou em qualquer formato
-- Não ignore nenhum texto, mesmo se parecer incompleto
-
-ETAPA 2 - IDENTIFICAÇÃO DA RECEITA:
-Após extrair o texto, identifique:
-- Nome/título da receita (geralmente no topo ou em destaque)
-- Lista de ingredientes (procure por quantidades + nomes de alimentos)
-- Modo de preparo/passos (procure por instruções sequenciais)
-- Tempo de preparo, porções, dificuldade (se mencionados)
-
-TIPOS DE IMAGEM SUPORTADOS:
-- Fotos de livros de receitas, revistas, cadernos
-- Receitas manuscritas/escritas à mão
-- Capturas de tela de sites ou aplicativos
-- Fotos de embalagens com receitas
-- Qualquer imagem com texto de receita
-
-REGRAS IMPORTANTES:
-- Se o texto estiver borrado ou parcial, extraia o que for legível
-- Infira ingredientes e passos mesmo se não estiverem bem formatados
-- Use valores padrão razoáveis para campos não encontrados
-- Se NÃO houver receita na imagem, retorne: {"title": "Receita não identificada", "description": "Não foi possível identificar uma receita nesta imagem", "ingredients": [], "steps": [], "prepTime": 0, "servings": 0, "difficulty": "facil", "tags": []}
-
-FORMATO DE RESPOSTA (JSON puro, sem markdown, sem backticks):
-{
-  "title": "Nome da receita",
-  "description": "Descrição breve em 1-2 frases",
-  "ingredients": [{"name": "ingrediente", "quantity": "quantidade numérica", "unit": "unidade de medida"}],
-  "steps": ["Passo 1 detalhado", "Passo 2 detalhado"],
-  "prepTime": 30,
-  "servings": 4,
-  "difficulty": "facil",
-  "tags": ["Almoço", "Saudável"]
-}
-
-RETORNE APENAS O JSON, sem nenhum texto antes ou depois.`;
-
-      const textPrompt = `Analise esta transcrição de uma receita ditada e extraia todas as informações. Se alguma informação não estiver clara, use valores padrão razoáveis.
-
-Retorne no formato JSON com os campos:
-- title (string): nome da receita
-- description (string curta): descrição em 1-2 frases
-- ingredients (array de {name, quantity, unit}): lista de ingredientes
-- steps (array de strings): passos do preparo
-- prepTime (número): tempo de preparo em minutos
-- servings (número): porções
-- difficulty ('facil', 'medio' ou 'dificil')
-- tags (array de strings: 'Café da manhã', 'Almoço', 'Jantar', 'Lanche', 'Fit', 'Saudável', etc)
-
-RETORNE APENAS O JSON, sem markdown ou texto adicional.
-
-Transcrição: ${content}`;
-
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: {
-          messages: [
-            {
-              role: "user",
-              content: type === "image" 
-                ? [
-                    { type: "text", text: imagePrompt },
-                    { type: "image_url", image_url: { url: content } }
-                  ]
-                : textPrompt
-            }
-          ]
-        }
+      console.log(`[ScanRecipe] Calling parse-recipe function - type: ${type}`);
+      console.log(`[ScanRecipe] Content length: ${content.length}`);
+      
+      const { data, error } = await supabase.functions.invoke('parse-recipe', {
+        body: { content, type }
       });
 
-      if (error) throw error;
+      console.log('[ScanRecipe] parse-recipe response:', data);
 
-      // Parse the AI response to extract JSON
-      let responseText = "";
-      const reader = data.getReader();
-      const decoder = new TextDecoder();
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        
-        // Parse SSE chunks
-        const lines = chunk.split('\n');
-        for (const line of lines) {
-          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-            try {
-              const parsed = JSON.parse(line.slice(6));
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) responseText += content;
-            } catch {}
-          }
+      if (error) {
+        console.error('[ScanRecipe] Function error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('[ScanRecipe] API error:', data.error);
+        if (data.rawResponse) {
+          console.log('[ScanRecipe] Raw response:', data.rawResponse);
         }
+        throw new Error(data.error);
       }
 
-      // Clean up the response and parse JSON
-      let jsonStr = responseText.trim();
-      if (jsonStr.startsWith('```json')) {
-        jsonStr = jsonStr.slice(7);
+      if (data?.recipe) {
+        console.log('[ScanRecipe] Recipe parsed successfully:', data.recipe.title);
+        return data.recipe;
       }
-      if (jsonStr.startsWith('```')) {
-        jsonStr = jsonStr.slice(3);
-      }
-      if (jsonStr.endsWith('```')) {
-        jsonStr = jsonStr.slice(0, -3);
-      }
-      jsonStr = jsonStr.trim();
 
-      const recipe = JSON.parse(jsonStr);
-      return {
-        title: recipe.title || "Receita sem nome",
-        description: recipe.description || "",
-        ingredients: recipe.ingredients || [],
-        steps: recipe.steps || [],
-        prepTime: recipe.prepTime || 30,
-        servings: recipe.servings || 2,
-        difficulty: recipe.difficulty || "medio",
-        tags: recipe.tags || []
-      };
+      return null;
     } catch (error) {
-      console.error("Error parsing recipe:", error);
+      console.error("[ScanRecipe] Error parsing recipe:", error);
       return null;
     }
   };
@@ -176,14 +81,17 @@ Transcrição: ${content}`;
 
     setIsProcessing(true);
     setMode("photo");
+    setProcessingStep("Lendo imagem...");
 
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result as string;
       setImagePreview(base64);
 
+      setProcessingStep("Extraindo texto da imagem (OCR)...");
       toast.info("Analisando receita...");
-      const recipe = await parseRecipeWithAI(base64, "image");
+      
+      const recipe = await parseRecipeWithAPI(base64, "image");
       
       if (recipe) {
         setParsedRecipe(recipe);
@@ -194,6 +102,7 @@ Transcrição: ${content}`;
         setMode(null);
       }
       setIsProcessing(false);
+      setProcessingStep("");
     };
     reader.readAsDataURL(file);
 
@@ -221,6 +130,7 @@ Transcrição: ${content}`;
 
       mediaRecorder.onstop = async () => {
         setIsProcessing(true);
+        setProcessingStep("Preparando áudio...");
         
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
@@ -235,22 +145,33 @@ Transcrição: ${content}`;
         reader.readAsDataURL(audioBlob);
         const base64Audio = await base64Promise;
 
+        setProcessingStep("Transcrevendo áudio...");
         toast.info("Transcrevendo áudio...");
+        
+        console.log('[ScanRecipe] Calling transcribe function...');
         
         // Transcribe audio
         const { data: transcribeData, error: transcribeError } = await supabase.functions.invoke('transcribe', {
           body: { audio: base64Audio, mimeType: audioBlob.type }
         });
 
+        console.log('[ScanRecipe] Transcribe response:', transcribeData);
+
         if (transcribeError || !transcribeData?.transcript) {
+          console.error('[ScanRecipe] Transcription error:', transcribeError);
           toast.error("Não foi possível transcrever o áudio.");
           setIsProcessing(false);
+          setProcessingStep("");
           setMode(null);
           return;
         }
 
-        toast.info("Analisando receita...");
-        const recipe = await parseRecipeWithAI(transcribeData.transcript, "text");
+        console.log('[ScanRecipe] Transcription:', transcribeData.transcript);
+        
+        setProcessingStep("Estruturando receita...");
+        toast.info("Estruturando receita...");
+        
+        const recipe = await parseRecipeWithAPI(transcribeData.transcript, "text");
         
         if (recipe) {
           setParsedRecipe(recipe);
@@ -260,6 +181,7 @@ Transcrição: ${content}`;
           setMode(null);
         }
         setIsProcessing(false);
+        setProcessingStep("");
         
         stream.getTracks().forEach(track => track.stop());
       };
@@ -329,6 +251,7 @@ Transcrição: ${content}`;
     setParsedRecipe(null);
     setImagePreview(null);
     setIsRecording(false);
+    setProcessingStep("");
   };
 
   if (!isPro) {
@@ -447,7 +370,12 @@ Transcrição: ${content}`;
         {isProcessing && !isRecording && (
           <div className="flex flex-col items-center justify-center py-12 space-y-6">
             <Loader2 className="w-12 h-12 text-primary animate-spin" />
-            <p className="text-muted-foreground">Processando receita...</p>
+            <div className="text-center">
+              <p className="text-muted-foreground">Processando receita...</p>
+              {processingStep && (
+                <p className="text-sm text-primary mt-2">{processingStep}</p>
+              )}
+            </div>
           </div>
         )}
 
@@ -465,6 +393,15 @@ Transcrição: ${content}`;
         {/* Parsed recipe preview */}
         {parsedRecipe && !isProcessing && (
           <div className="space-y-6">
+            {/* Image preview if available */}
+            {imagePreview && (
+              <img 
+                src={imagePreview} 
+                alt="Receita" 
+                className="w-full h-40 object-cover rounded-2xl"
+              />
+            )}
+            
             <div className="bg-card border border-border rounded-2xl p-4 space-y-4">
               <div>
                 <label className="text-xs text-muted-foreground">Título</label>
@@ -520,35 +457,59 @@ Transcrição: ${content}`;
 
               <div>
                 <label className="text-xs text-muted-foreground">Ingredientes ({parsedRecipe.ingredients.length})</label>
-                <div className="mt-1 space-y-1">
-                  {parsedRecipe.ingredients.slice(0, 5).map((ing, i) => (
-                    <div key={i} className="text-sm py-1 px-2 bg-secondary rounded">
-                      {ing.quantity} {ing.unit} {ing.name}
+                <div className="mt-1 space-y-1 max-h-40 overflow-y-auto">
+                  {parsedRecipe.ingredients.map((ing, i) => (
+                    <div key={i} className="text-sm py-1 px-2 bg-secondary rounded flex items-center gap-2">
+                      <span className="flex-1">{ing.quantity} {ing.unit} {ing.name}</span>
+                      <button 
+                        onClick={() => {
+                          const newIngredients = parsedRecipe.ingredients.filter((_, idx) => idx !== i);
+                          setParsedRecipe({...parsedRecipe, ingredients: newIngredients});
+                        }}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
                   ))}
-                  {parsedRecipe.ingredients.length > 5 && (
-                    <p className="text-xs text-muted-foreground">
-                      +{parsedRecipe.ingredients.length - 5} ingredientes
-                    </p>
-                  )}
                 </div>
               </div>
 
               <div>
                 <label className="text-xs text-muted-foreground">Passos ({parsedRecipe.steps.length})</label>
-                <div className="mt-1 space-y-1">
-                  {parsedRecipe.steps.slice(0, 3).map((step, i) => (
-                    <div key={i} className="text-sm py-1 px-2 bg-secondary rounded line-clamp-1">
-                      {i + 1}. {step}
+                <div className="mt-1 space-y-1 max-h-48 overflow-y-auto">
+                  {parsedRecipe.steps.map((step, i) => (
+                    <div key={i} className="text-sm py-2 px-2 bg-secondary rounded">
+                      <div className="flex items-start gap-2">
+                        <span className="text-primary font-medium">{i + 1}.</span>
+                        <span className="flex-1">{step}</span>
+                        <button 
+                          onClick={() => {
+                            const newSteps = parsedRecipe.steps.filter((_, idx) => idx !== i);
+                            setParsedRecipe({...parsedRecipe, steps: newSteps});
+                          }}
+                          className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   ))}
-                  {parsedRecipe.steps.length > 3 && (
-                    <p className="text-xs text-muted-foreground">
-                      +{parsedRecipe.steps.length - 3} passos
-                    </p>
-                  )}
                 </div>
               </div>
+
+              {parsedRecipe.tags.length > 0 && (
+                <div>
+                  <label className="text-xs text-muted-foreground">Tags</label>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {parsedRecipe.tags.map((tag, i) => (
+                      <span key={i} className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3">
