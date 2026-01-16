@@ -7,7 +7,7 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m2
     integrations:
-      app_store_connect: Codemagic # Nome da integração que você criar no CodeMagic
+      app_store_connect: CozinhaAi
     environment:
       ios_signing:
         distribution_type: app_store
