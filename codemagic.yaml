@@ -12,7 +12,7 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.cozinhaai
-      node: 20
+      node: 22
       xcode: latest
       cocoapods: default
       vars:
@@ -92,7 +92,7 @@ workflows:
       android_signing:
         - cozinhai_keystore # Nome do keystore que você criar no CodeMagic
       java: 17
-      node: 20
+      node: 22
       vars:
         PACKAGE_NAME: "com.cozinhaai"
     triggering:
